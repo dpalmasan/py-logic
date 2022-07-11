@@ -16,10 +16,20 @@ class BinClause(ABC):
 
     def __and__(self, other) -> "BinClause":
         return AndClause(self, other)
+
+    def __gt__(self, other) -> "BinClause":
+        return CondClause(self, other)
+
+    def __rshift__(self, other) -> "BinClause":
+        return BicondClause(self, other)
+
+    def __repr__(self) -> str:
+        return f"({self._c1.__repr__()} {self.OP.value} {self._c2.__repr__()})"
     
     @abstractmethod
     def __invert__(self) -> "BinClause":
         pass
+
 
 class Literal(BinClause):
     def __init__(self, identifier: str, truthyness: bool):
@@ -48,9 +58,6 @@ class OrClause(BinClause):
         self._c1 = c1
         self._c2 = c2
 
-    def __repr__(self) -> str:
-        return f"{self._c1.__repr__()} {self.OP.value} {self._c2.__repr__()}"
-
     def __invert__(self) -> "BinClause":
         return ~self._c1 & ~self._c2
 
@@ -61,8 +68,25 @@ class AndClause(BinClause):
         self._c1 = c1
         self._c2 = c2
 
-    def __repr__(self) -> str:
-        return f"{self._c1.__repr__()} {self.OP.value} {self._c2.__repr__()}"
-
     def __invert__(self) -> "BinClause":
         return ~self._c1 | ~self._c2
+
+
+class CondClause(BinClause):
+    OP = Operator.COND
+    def __init__(self, c1: BinClause, c2: BinClause):
+        self._c1 = c1
+        self._c2 = c2
+
+    def __invert__(self) -> "BinClause":
+        return self._c1 & ~self._c2
+
+
+class BicondClause(BinClause):
+    OP = Operator.BICOND
+    def __init__(self, c1: BinClause, c2: BinClause):
+        self._c1 = c1
+        self._c2 = c2
+
+    def __invert__(self) -> "BinClause":
+        return (self._c1 & ~self._c2) | (self._c2 & ~self._c1)
