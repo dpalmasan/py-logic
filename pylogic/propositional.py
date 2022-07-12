@@ -1,5 +1,6 @@
 from enum import Enum
 from abc import ABC, abstractmethod
+from typing import List
 
 class Operator(Enum):
     AND = "^"
@@ -7,6 +8,13 @@ class Operator(Enum):
     COND = "->"
     BICOND = "<->"
     VARIABLE = "VAR"
+
+
+class NonCnfClauseException(Exception):
+    pass
+
+class UselessCnfClauseException(Exception):
+    pass
 
 class Clause(ABC):
     OP = None
@@ -43,6 +51,9 @@ class Clause(ABC):
     def __eq__(self, other):
         if self.OP != other.OP:
             return False
+
+        if type(self) == Variable:
+            return self == other
         return self.lhs == other.lhs and self.rhs == other.rhs
 
 class Variable(Clause):
@@ -77,6 +88,9 @@ class Variable(Clause):
 
     def __eq__(self, other: "Variable") -> bool:
         return self.identifier == other.identifier and self.truthyness == other.truthyness
+
+    def __hash__(self) -> str:
+        return hash(self.__str__())
 
 
 class OrClause(Clause):
@@ -133,11 +147,29 @@ def to_cnf(phi: Clause) -> Clause:
     if phi.OP == Operator.OR:
         p = to_cnf(phi.lhs)
         q = to_cnf(phi.rhs)
-        return (p.lhs | q.lhs) & (p.lhs | q.rhs) & (p.rhs | q.lhs) & (p.rhs | q.rhs)
+        is_p_variable = type(p) == Variable
+        is_q_variable = type(q) == Variable
+        if not is_p_variable and not is_q_variable:
+            return (p.lhs | q.lhs) & (p.lhs | q.rhs) & (p.rhs | q.lhs) & (p.rhs | q.rhs)
 
+        if is_p_variable and not is_q_variable:
+            return p.lhs | q.lhs | q.rhs
+
+        if not is_p_variable and is_q_variable:
+            return  p.lhs | p.rhs | q.lhs
+        return p | q
 
     if phi.OP == Operator.COND:
         return to_cnf(~phi.lhs | phi.rhs)
 
     if phi.OP == Operator.BICOND:
         return to_cnf((phi.lhs & p.rhs) | (~phi.lhs & ~phi.rhs))
+
+
+class CnfClause:
+    def __init__(self, variables: List[Variable]):
+        self._literals = set(variables)
+        for variable in variables:
+            if variable in self._literals and ~variable in self._literals:
+                raise UselessCnfClauseException("This clause is always true!")
+
