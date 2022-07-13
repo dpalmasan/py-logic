@@ -140,9 +140,7 @@ def to_cnf(phi: Clause) -> Clause:
     if phi.OP == Operator.AND:
         p = to_cnf(phi.lhs)
         q = to_cnf(phi.rhs)
-        lhs = p.lhs if type(p) == Variable else (p.lhs & p.rhs)
-        rhs = q.lhs if type(q) == Variable else (q.lhs & q.rhs)
-        return lhs & rhs
+        return p & q
 
     if phi.OP == Operator.OR:
         p = to_cnf(phi.lhs)
@@ -153,10 +151,14 @@ def to_cnf(phi: Clause) -> Clause:
             return (p.lhs | q.lhs) & (p.lhs | q.rhs) & (p.rhs | q.lhs) & (p.rhs | q.rhs)
 
         if is_p_variable and not is_q_variable:
-            return p.lhs | q.lhs | q.rhs
+            if q.OP == Operator.AND:
+                return to_cnf(p.lhs | q.lhs) & to_cnf(p.lhs | q.rhs)
+            return p.lhs | to_cnf(q.lhs | q.rhs)
 
         if not is_p_variable and is_q_variable:
-            return  p.lhs | p.rhs | q.lhs
+            if p.OP == Operator.AND:
+                return  to_cnf(p.lhs | q.lhs) & to_cnf(p.rhs | q.lhs)
+            return to_cnf(p.lhs | p.rhs) | q.lhs
         return p | q
 
     if phi.OP == Operator.COND:
