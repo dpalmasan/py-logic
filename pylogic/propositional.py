@@ -1,6 +1,6 @@
 from enum import Enum
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 
 
 class Operator(Enum):
@@ -17,6 +17,10 @@ class NonCnfClauseException(Exception):
 
 
 class UselessCnfClauseException(Exception):
+    pass
+
+
+class CnfResolveError(Exception):
     pass
 
 
@@ -186,3 +190,31 @@ class CnfClause:
         for variable in variables:
             if variable in self._literals and ~variable in self._literals:
                 raise UselessCnfClauseException("This clause is always true!")
+
+    def resolve(self, other: "CnfClause", literal: Variable) -> Optional["CnfClause"]:
+        c1 = CnfClause(list(self._literals))
+        c2 = CnfClause(list(other._literals))
+        if literal not in c1 and ~literal not in c1:
+            raise CnfResolveError(f"Literal {literal} not found in clause {self}")
+
+        if literal not in c2 and ~literal not in c2:
+            raise CnfResolveError(f"Literal {literal} not found in clause {other}")
+
+        c1p = c1 if literal in self else c2
+        c2p = c1 if ~literal in self else c2
+
+        c1p._literals.remove(literal)
+        c2p._literals.remove(~literal)  # type: ignore
+        return CnfClause(list(c1p._literals | c2p._literals))
+
+    def __contains__(self, key: Clause) -> bool:
+        return key in self._literals
+
+    def __repr__(self) -> str:
+        return "({})".format(" v ".join(map(str, self._literals)))
+
+    def __eq__(self, other) -> bool:
+        return self._literals == other._literals
+
+    def __ne__(self, other) -> bool:
+        return self._literals != other._literals
