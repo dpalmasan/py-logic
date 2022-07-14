@@ -1,6 +1,7 @@
 from enum import Enum
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List, Optional, Set
+from functools import singledispatchmethod
 
 
 class Operator(Enum):
@@ -218,3 +219,30 @@ class CnfClause:
 
     def __ne__(self, other) -> bool:
         return self._literals != other._literals
+
+    def __hash__(self) -> int:
+        return hash(self.__repr__())
+
+
+class PropLogicKB:
+    def __init__(self, clauses: Optional[Set[CnfClause]] = None):
+        self._clauses = clauses if clauses else set()
+
+    @property
+    def clauses(self) -> Set[CnfClause]:
+        return self._clauses
+
+    @singledispatchmethod
+    def add(self, arg) -> None:
+        raise NotImplementedError(f"Cannot add objects of type {type(arg)}")
+
+    @add.register
+    def _(self, clause: CnfClause) -> None:
+        self._clauses.add(clause)
+
+    @add.register
+    def _(self, clauses: list) -> None:
+        for clause in clauses:
+            if type(clause) != CnfClause:
+                raise TypeError("clauses must be a list of CnfClause")
+            self.add(clause)
