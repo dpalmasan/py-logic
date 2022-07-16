@@ -148,8 +148,80 @@ class BicondClause(Clause):
         return (self._c1 & ~self._c2) | (self._c2 & ~self._c1)
 
 
-def is_simple_clause(phi: Clause) -> bool:
-    return type(phi.lhs) == Variable and type(phi.rhs) == Variable
+def _is_simple_clause(phi: Clause) -> bool:
+    return (
+        type(phi.lhs) == Variable
+        and type(phi.rhs) == Variable
+        and phi.OP != Operator.VARIABLE
+    )
+
+
+def _is_variable(phi: Clause):
+    return phi.OP == Operator.VARIABLE
+
+
+def _distribute_clauses(p, q):  # noqa: C901
+    # Base Cases
+    if _is_variable(p) and _is_simple_clause(q):
+        if q.OP == Operator.AND:
+            return (p.lhs | q.lhs) & (p.lhs | q.rhs)
+        return p.lhs | q.lhs | q.rhs
+
+    if _is_variable(q) and _is_simple_clause(p):
+        if p.OP == Operator.AND:
+            return (p.lhs | q.lhs) & (p.rhs | q.lhs)
+        return p.lhs | p.rhs | q.lhs
+
+    if _is_variable(p) and _is_variable(q):
+        return p | q
+
+    if _is_simple_clause(p) and _is_simple_clause(q):
+        if p.OP == Operator.AND and q.OP == Operator.AND:
+            return (p.lhs | q.lhs) & (p.lhs | q.rhs) & (p.rhs | q.lhs) & (p.rhs | q.rhs)
+
+        if p.OP == Operator.AND:
+            return (p.lhs | q.lhs | q.rhs) & (p.rhs | q.lhs | q.rhs)
+
+        if q.OP == Operator.AND:
+            return (p.lhs | p.rhs | q.lhs) & (p.lhs | p.rhs | q.rhs)
+        return p.lhs | p.rhs | q.lhs | q.rhs
+
+    # Recursion
+    if _is_variable(p):
+        if q.OP == Operator.AND:
+            return _distribute_clauses(p.lhs, q.lhs) & _distribute_clauses(p.lhs, q.rhs)
+        return p | _distribute_clauses(q.lhs, q.rhs)
+
+    if _is_variable(q):
+        if p.OP == Operator.AND:
+            return _distribute_clauses(p.lhs, q.lhs) & _distribute_clauses(p.rhs, q.lhs)
+        return _distribute_clauses(p.lhs, p.rhs) | q
+
+    if _is_simple_clause(p):
+        if q.OP == Operator.AND:
+            print(p, q)
+            return _distribute_clauses(p, q.lhs) & _distribute_clauses(p, q.rhs)
+        return _distribute_clauses(p, q.lhs) | _distribute_clauses(p, q.rhs)
+
+    if _is_simple_clause(q):
+        if p.OP == Operator.AND:
+            return _distribute_clauses(p.lhs, q) & _distribute_clauses(p.rhs, q)
+        return _distribute_clauses(p.lhs, q) | _distribute_clauses(p.rhs, q)
+
+    if p.OP == Operator.AND and q.OP == Operator.AND:
+        return (
+            _distribute_clauses(p.lhs, q.lhs)
+            & _distribute_clauses(p.lhs, q.rhs)
+            & _distribute_clauses(p.rhs, q.lhs)
+            & _distribute_clauses(p.rhs, q.rhs)
+        )
+
+    if p.OP == Operator.AND:
+        return _distribute_clauses(p, q.lhs) & _distribute_clauses(p, q.rhs)
+
+    if q.OP == Operator.AND:
+        return _distribute_clauses(p.lhs, q) & _distribute_clauses(p.rhs, q)
+    return _distribute_clauses(p.lhs, p.rhs) | _distribute_clauses(q.lhs, q.rhs)
 
 
 def to_cnf(phi: Clause) -> Clause:
@@ -161,36 +233,7 @@ def to_cnf(phi: Clause) -> Clause:
     if phi.OP == Operator.OR:
         p = to_cnf(phi.lhs)
         q = to_cnf(phi.rhs)
-        is_p_variable = type(p) == Variable
-        is_q_variable = type(q) == Variable
-        if not is_p_variable and not is_q_variable:
-            if p.OP == Operator.OR and q.OP == Operator.OR:
-                return to_cnf(p.lhs | p.rhs) | to_cnf(q.lhs | q.rhs)
-
-            if p.OP == Operator.OR:
-                return to_cnf(p.lhs | p.rhs | q.lhs) & to_cnf(p.lhs | p.rhs | q.rhs)
-
-            if q.OP == Operator.OR:
-                return to_cnf(p.lhs | q.lhs | q.rhs) & to_cnf(p.rhs | q.lhs | q.rhs)
-
-            return (
-                to_cnf(p.lhs | q.lhs)
-                & to_cnf(p.lhs | q.rhs)
-                & to_cnf(p.rhs | q.lhs)
-                & to_cnf(p.rhs | q.rhs)
-            )
-
-        if is_p_variable and not is_q_variable:
-            if q.OP == Operator.AND:
-                return to_cnf(p.lhs | q.lhs) & to_cnf(p.rhs | q.lhs)
-            return p.lhs | to_cnf(q.lhs | q.rhs)
-
-        if not is_p_variable and is_q_variable:
-            if p.OP == Operator.AND:
-                return to_cnf(p.lhs | q.lhs) & to_cnf(p.rhs | q.lhs)
-            return to_cnf(p.lhs | p.rhs) | q.lhs
-
-        return p | q
+        return _distribute_clauses(p, q)
 
     if phi.OP == Operator.COND:
         return to_cnf(~phi.lhs | phi.rhs)
