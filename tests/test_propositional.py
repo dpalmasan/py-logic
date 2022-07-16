@@ -35,17 +35,17 @@ def test_cnf_class():
     q = Variable("Q", True)
     r = Variable("R", True)
     a = Variable("A", True)
-    c1 = CnfClause([p, q, a])
-    c2 = CnfClause([r, ~q])
+    c1 = CnfClause({p, q, a})
+    c2 = CnfClause({r, ~q})
     assert q in c1
-    assert c1.resolve(c2, q) == CnfClause([p, r, a])
+    assert c1.resolve(c2, q) == CnfClause({p, r, a})
 
 
 def test_pl_kb():
     kb = PropLogicKB()
     assert len(kb.clauses) == 0
 
-    kb.add(CnfClause([p, q, a]))
-    assert kb.clauses == {CnfClause([p, q, a])}
-    kb.add([CnfClause([p, q]), CnfClause([r])])
-    assert kb.clauses == {CnfClause([p, q, a]), CnfClause([p, q]), CnfClause([r])}
+    kb.add(CnfClause({p, q, a}))
+    assert kb.clauses == {CnfClause({p, q, a})}
+    kb.add([CnfClause({p, q}), CnfClause({r})])
+    assert kb.clauses == {CnfClause({p, q, a}), CnfClause({p, q}), CnfClause({r})}

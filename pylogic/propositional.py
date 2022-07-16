@@ -1,6 +1,6 @@
 from enum import Enum
 from abc import ABC, abstractmethod
-from typing import List, Optional, Set
+from typing import Optional, Set
 from functools import singledispatchmethod
 
 
@@ -202,15 +202,15 @@ def to_cnf(phi: Clause) -> Clause:
 
 
 class CnfClause:
-    def __init__(self, variables: List[Variable]):
-        self._literals = set(variables)
+    def __init__(self, variables: Set[Variable]):
+        self._literals = variables
         for variable in variables:
             if variable in self._literals and ~variable in self._literals:
                 raise UselessCnfClauseException("This clause is always true!")
 
     def resolve(self, other: "CnfClause", literal: Variable) -> Optional["CnfClause"]:
-        c1 = CnfClause(list(self._literals))
-        c2 = CnfClause(list(other._literals))
+        c1 = CnfClause(self._literals)
+        c2 = CnfClause(other._literals)
         if literal not in c1 and ~literal not in c1:
             raise CnfResolveError(f"Literal {literal} not found in clause {self}")
 
@@ -222,7 +222,7 @@ class CnfClause:
 
         c1p._literals.remove(literal)
         c2p._literals.remove(~literal)  # type: ignore
-        return CnfClause(list(c1p._literals | c2p._literals))
+        return CnfClause(c1p._literals | c2p._literals)
 
     def __contains__(self, key: Clause) -> bool:
         return key in self._literals
