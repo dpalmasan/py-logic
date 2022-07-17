@@ -1,6 +1,6 @@
 from enum import Enum
 from abc import ABC, abstractmethod
-from typing import Optional, Set
+from typing import Optional, Set, Tuple
 from functools import singledispatchmethod
 
 
@@ -251,9 +251,13 @@ class CnfClause:
             if variable in self._literals and ~variable in self._literals:
                 raise UselessCnfClauseException("This clause is always true!")
 
-    def resolve(self, other: "CnfClause", literal: Variable) -> Optional["CnfClause"]:
-        c1 = CnfClause(self._literals)
-        c2 = CnfClause(other._literals)
+    @property
+    def literals(self) -> Set[Variable]:
+        return self._literals
+
+    def resolve(self, other: "CnfClause", literal: Variable) -> "CnfClause":
+        c1 = CnfClause(self._literals.copy())
+        c2 = CnfClause(other._literals.copy())
         if literal not in c1 and ~literal not in c1:
             raise CnfResolveError(f"Literal {literal} not found in clause {self}")
 
@@ -267,20 +271,28 @@ class CnfClause:
         c2p._literals.remove(~literal)  # type: ignore
         return CnfClause(c1p._literals | c2p._literals)
 
+    def is_empty_clause(self) -> bool:
+        return len(self._literals) == 0
+
     def __contains__(self, key: Clause) -> bool:
         return key in self._literals
 
     def __repr__(self) -> str:
-        return "({})".format(" v ".join(map(str, self._literals)))
+        return "({})".format(
+            " v ".join(map(str, sorted(self._literals, key=lambda x: str(x))))
+        )
 
     def __eq__(self, other) -> bool:
-        return self._literals == other._literals
+        return self.__repr__() == other.__repr__()
 
     def __ne__(self, other) -> bool:
-        return self._literals != other._literals
+        return not self == other
 
     def __hash__(self) -> int:
         return hash(self.__repr__())
+
+    def __len__(self) -> int:
+        return len(self._literals)
 
 
 class PropLogicKB:
@@ -360,3 +372,52 @@ class CnfParser:
             except UselessCnfClauseException:
                 pass
         return cnf_clauses
+
+
+def pl_resolution(kb: PropLogicKB, alpha: Clause, maxit=1000) -> bool:
+    parser = CnfParser()
+    clauses = kb.clauses.copy() | parser.parse(to_cnf(~alpha))
+    new = set()
+    it = 1
+    processed_resolvers: Set[Tuple[CnfClause, CnfClause, Variable]] = set()
+    while it <= maxit:
+        for ci in clauses:
+            for cj in clauses:
+                if ci == cj:
+                    continue
+                c1 = ci if len(ci) < len(cj) else cj
+                c2 = ci if c1 != ci else cj
+                candidate_literals = []
+                for literal in c1.literals:
+                    if ~literal in c2.literals:
+                        candidate_literals.append(literal)
+                resolvents = set()
+                for literal in candidate_literals:
+                    if (c1, c2, literal) in processed_resolvers or (
+                        c1,
+                        c2,
+                        ~literal,
+                    ) in processed_resolvers:
+                        continue
+
+                    try:
+                        res = c1.resolve(c2, literal)
+                    except UselessCnfClauseException:
+                        continue
+                    print(res)
+                    if res.is_empty_clause():
+                        return True
+                    resolvents.add(res)
+
+                    # Memoization to avoid resolving same clauses
+                    processed_resolvers.add((c1, c2, literal))
+                    processed_resolvers.add((c1, c2, ~literal))  # type: ignore
+                new |= resolvents
+        if new.issubset(clauses):
+            return False
+
+        clauses |= new
+        it += 1
+
+    # Negation as failure (exhausted!)
+    return False
