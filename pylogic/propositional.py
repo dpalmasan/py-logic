@@ -199,7 +199,6 @@ def _distribute_clauses(p, q):  # noqa: C901
 
     if _is_simple_clause(p):
         if q.OP == Operator.AND:
-            print(p, q)
             return _distribute_clauses(p, q.lhs) & _distribute_clauses(p, q.rhs)
         return _distribute_clauses(p, q.lhs) | _distribute_clauses(p, q.rhs)
 
@@ -404,7 +403,6 @@ def pl_resolution(kb: PropLogicKB, alpha: Clause, maxit=1000) -> bool:
                         res = c1.resolve(c2, literal)
                     except UselessCnfClauseException:
                         continue
-                    print(res)
                     if res.is_empty_clause():
                         return True
                     resolvents.add(res)
