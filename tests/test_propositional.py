@@ -1,4 +1,4 @@
-from pylogic.propositional import PropLogicKB, Variable, to_cnf, CnfClause
+from pylogic.propositional import CnfParser, PropLogicKB, Variable, to_cnf, CnfClause
 
 p = Variable("P", True)
 q = Variable("Q", True)
@@ -49,3 +49,18 @@ def test_pl_kb():
     assert kb.clauses == {CnfClause({p, q, a})}
     kb.add([CnfClause({p, q}), CnfClause({r})])
     assert kb.clauses == {CnfClause({p, q, a}), CnfClause({p, q}), CnfClause({r})}
+
+
+def test_cnf_parser():
+    B11 = Variable("B11", True)
+    P12 = Variable("P12", True)
+    P21 = Variable("P21", True)
+
+    # Example from AIMA book
+    cnf = to_cnf(B11 >> (P12 | P21))
+    parser = CnfParser()
+    assert parser.parse(cnf) == {
+        CnfClause({B11, ~P21}),
+        CnfClause({B11, ~P12}),
+        CnfClause({P21, ~B11, P12}),
+    }

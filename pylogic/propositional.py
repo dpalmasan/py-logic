@@ -305,3 +305,58 @@ class PropLogicKB:
             if type(clause) != CnfClause:
                 raise TypeError("clauses must be a list of CnfClause")
             self.add(clause)
+
+
+class CnfParser:
+    def __init__(self):
+        self.and_clauses = []
+        self.or_clauses = []
+
+    def _get_subtrees(self, node: Clause):
+        if type(node) != Variable:
+            if node.OP == Operator.AND:
+                if node.lhs.OP != Operator.AND:
+                    self.and_clauses.append(node.lhs)
+                else:
+                    self._get_subtrees(node.lhs)
+
+                if node.rhs.OP != Operator.AND:
+                    self.and_clauses.append(node.rhs)
+                else:
+                    self._get_subtrees(node.rhs)
+
+    def _get_cnf_clause(self, subtree: Clause) -> Set[Variable]:
+        if type(subtree) != Variable:
+            return self._get_cnf_clause(subtree.lhs) | self._get_cnf_clause(subtree.rhs)
+
+        return {subtree.lhs}
+
+    def parse(self, clause: Clause) -> Set[CnfClause]:
+        """Transform a formula into a set of CnfClauses.
+
+        Assumes that tha ``clause`` comes in CNF form, otherwise
+        the behavior is undefined. It is recommended running ``to_cnf`` to
+        the sentence you'd like to transform.
+
+        :param clause: Clause in CNF form
+        :type clause: Clause
+        :return: All disjoint clauses
+        :rtype: Set[CnfClause]
+        """
+        self.and_clauses = []
+        self.or_clauses = []
+        cnf_clauses = set()
+        self._get_subtrees(clause)
+
+        if self.and_clauses:
+            for subtree in self.and_clauses:
+                try:
+                    cnf_clauses.add(CnfClause(self._get_cnf_clause(subtree)))
+                except UselessCnfClauseException:
+                    pass
+        else:
+            try:
+                cnf_clauses.add(CnfClause(self._get_cnf_clause(clause)))
+            except UselessCnfClauseException:
+                pass
+        return cnf_clauses
