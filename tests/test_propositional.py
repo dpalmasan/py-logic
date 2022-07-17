@@ -1,4 +1,11 @@
-from pylogic.propositional import CnfParser, PropLogicKB, Variable, to_cnf, CnfClause
+from pylogic.propositional import (
+    CnfParser,
+    PropLogicKB,
+    Variable,
+    pl_resolution,
+    to_cnf,
+    CnfClause,
+)
 
 p = Variable("P", True)
 q = Variable("Q", True)
@@ -40,6 +47,9 @@ def test_cnf_class():
     assert q in c1
     assert c1.resolve(c2, q) == CnfClause({p, r, a})
 
+    # We don't desire to mutate any of the clauses
+    assert q in c1 and ~q in c2
+
 
 def test_pl_kb():
     kb = PropLogicKB()
@@ -59,8 +69,36 @@ def test_cnf_parser():
     # Example from AIMA book
     cnf = to_cnf(B11 >> (P12 | P21))
     parser = CnfParser()
-    assert parser.parse(cnf) == {
-        CnfClause({B11, ~P21}),
-        CnfClause({B11, ~P12}),
-        CnfClause({P21, ~B11, P12}),
-    }
+    assert (
+        len(
+            parser.parse(cnf).intersection(
+                {
+                    CnfClause({B11, ~P21}),
+                    CnfClause({B11, ~P12}),
+                    CnfClause({P21, ~B11, P12}),
+                }
+            )
+        )
+        == 3
+    )
+
+    # Extra checking to confirm hashing works well
+    assert parser.parse(cnf).issubset(
+        {
+            CnfClause({B11, ~P21}),
+            CnfClause({B11, ~P12}),
+            CnfClause({P21, ~B11, P12}),
+        }
+    )
+
+
+def test_pl_resolution():
+    # Example from AIMA
+    B11 = Variable("B11", True)
+    P12 = Variable("P12", True)
+    P21 = Variable("P21", True)
+    cnf = to_cnf((B11 >> (P12 | P21)) & ~B11)
+    parser = CnfParser()
+    clauses = parser.parse(cnf)
+    kb = PropLogicKB(clauses)
+    assert pl_resolution(kb, Variable("P12", False))
