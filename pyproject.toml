@@ -1,7 +1,32 @@
 [tool.black]
 line-length = 88
-target-version = ['py36', 'py37', 'py38']
+target-version = ['py38', 'py39']
 include = '\.pyi?$'
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [ "pragma: no cover", "if _typing.TYPE_CHECKING:", "@overload" ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--cov-fail-under=85", "--cov=.", "-ra", "-v"]
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = py{38,39}
+
+[testenv]
+setenv = PYTHONPATH = {toxinidir}
+skip_install = True
+deps =
+    -r{toxinidir}/requirements-test.txt
+commands =
+    pip install -e .
+    pytest
+"""
 
 [build-system]
 requires = ["setuptools>=45.0", "setuptools_scm[toml]>=6.3.1", "wheel"]
