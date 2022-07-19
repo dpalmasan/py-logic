@@ -3,3 +3,4 @@ __pycache__
 test.py
 pylogic.egg-info/
 .coverage
+coverage.*

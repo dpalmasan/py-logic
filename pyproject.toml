@@ -11,7 +11,7 @@ exclude_lines = [ "pragma: no cover", "if _typing.TYPE_CHECKING:", "@overload" ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = ["--cov-fail-under=85", "--cov=.", "-ra", "-v"]
+addopts = ["--cov-fail-under=85", "--cov-report=xml", "--cov=.", "-ra", "-v"]
 
 [tool.tox]
 legacy_tox_ini = """
