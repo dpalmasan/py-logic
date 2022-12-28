@@ -1,7 +1,7 @@
 from enum import Enum
 from abc import ABC, abstractmethod
-from typing import DefaultDict, List, Optional, Set, Tuple
-from functools import singledispatchmethod
+from typing import DefaultDict, Dict, List, Optional, Set, Tuple
+from functools import reduce, singledispatchmethod
 from collections import defaultdict
 
 
@@ -68,8 +68,11 @@ class Clause(ABC):
 class Variable(Clause):
     OP = Operator.VARIABLE
 
-    def __init__(self, identifier: str, truthyness: bool):
+    def __init__(
+        self, identifier: str, is_negated: bool, truthyness: Optional[bool] = None
+    ):
         self._identifier = identifier
+        self._is_negated = is_negated
         self._truthyness = truthyness
 
     @property
@@ -85,20 +88,28 @@ class Variable(Clause):
         return self._identifier
 
     @property
-    def truthyness(self) -> bool:
+    def is_negated(self) -> bool:
+        return self._is_negated
+
+    @property
+    def truthyness(self) -> Optional[bool]:
         return self._truthyness
 
+    @truthyness.setter
+    def truthyness(self, val):
+        self._truthyness = val
+
     def __repr__(self) -> str:
-        return "{}{}".format("" if (self._truthyness) else "¬", self._identifier)
+        return "{}{}".format("¬" if (self._is_negated) else "", self._identifier)
 
     def __invert__(self) -> "Clause":
-        return Variable(self._identifier, not self._truthyness)
+        return Variable(self._identifier, not self._is_negated, not self._truthyness)
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, Variable):
             return False
         return (
-            self.identifier == other.identifier and self.truthyness == other.truthyness
+            self.identifier == other.identifier and self.is_negated == other.is_negated
         )
 
     def __hash__(self) -> int:
@@ -301,6 +312,27 @@ class CnfClause:
                 subset = False
         return subset
 
+    def is_true(self, model) -> Optional[bool]:
+        for literal in self.literals:
+            if literal in model:
+                literal.truthyness = model[literal]
+            elif ~literal in model:
+                literal.truthyness = ~model[~literal]
+            else:
+                literal.truthyness = None
+        if (
+            reduce(
+                lambda x, y: x is None and y is None,
+                (literal.truthyness for literal in self.literals),
+            )
+            is None
+        ):
+            return None
+        return reduce(
+            lambda x, y: x is True or y is True,
+            (literal.truthyness for literal in self.literals),
+        )
+
 
 class PropLogicKB:
     def __init__(self, clauses: Optional[Set[CnfClause]] = None):
@@ -443,3 +475,68 @@ def pl_resolution(kb: PropLogicKB, alpha: Clause, maxit=1000) -> bool:
 
     # Negation as failure (exhausted!)
     return False
+
+
+def find_pure_symbol(
+    symbols: Set[str], clauses: Set[CnfClause], model: Dict[str, bool]
+) -> Tuple[Optional[str], bool]:
+    variables = set()
+    for symbol in symbols:
+        for clause in clauses:
+            for literal in clause.literals:
+                if literal.identifier == symbol:
+                    variables.add(literal)
+
+    for clause in clauses:
+        for literal in clause.literals:
+            if literal in variables and ~literal not in variables:
+                return literal.identifier, model[literal.identifier]
+
+    return None, False
+
+
+def find_unit_clause(clauses, model) -> Tuple[str, bool]:
+    pass
+
+
+def dpll(clauses: Set[CnfClause], symbols: Set[str], model) -> bool:
+    # If all clauses True in model
+    if reduce(
+        lambda x, y: (x is True and y is True),
+        (clause.is_true(model) for clause in clauses),
+    ):
+        True
+
+    # If some clause is True in model
+    for clause in clauses:
+        if not clause.is_true(model):
+            return False
+
+    p, value = find_pure_symbol(symbols, clauses, model)
+    # if p is not None:
+    if p is not None:
+        model[p] = value
+        symbols.remove(p)
+        return dpll(clauses, symbols, model)
+    p, value = find_unit_clause(clauses, model)
+    return False
+
+
+def find_clause_symbols(cnf_clauses: Set[CnfClause]) -> Set[str]:
+    symbols = set()
+    for clause in cnf_clauses:
+        for literal in clause.literals:
+            if literal not in symbols and ~literal not in symbols:
+                symbols.add(literal.identifier)
+    return symbols
+
+
+def dpll__satisfiable(s: Clause) -> bool:
+    if not isinstance(s, Clause):
+        raise Exception("Input must be a propositional logic sentence.")
+
+    parser = CnfParser()
+    clauses = to_cnf(s)
+    cnf_clauses = parser.parse(clauses)
+    symbols = find_clause_symbols(cnf_clauses)
+    return dpll(cnf_clauses, symbols, [])

@@ -2,6 +2,8 @@ from pylogic.propositional import (
     CnfParser,
     PropLogicKB,
     Variable,
+    find_clause_symbols,
+    find_pure_symbol,
     pl_resolution,
     to_cnf,
     CnfClause,
@@ -141,3 +143,60 @@ def test_debug():
     kb.add(list(r4))
     kb.add(list(r2))
     assert pl_resolution(kb, alpha) is False
+
+
+def test_find_clause_symbols():
+    B11 = Variable("B11", True)
+    P12 = Variable("P12", True)
+    P21 = Variable("P21", True)
+    cnf = to_cnf((B11 >> (P12 | P21)) & ~B11)
+    parser = CnfParser()
+    clauses = parser.parse(cnf)
+    assert find_clause_symbols(clauses) == {"B11", "P12", "P21"}
+
+
+def test_find_pure_symbol():
+    clauses = {
+        CnfClause(
+            {
+                Variable("A", True, True),
+                Variable("B", False, True),
+                Variable("C", False, False),
+            }
+        ),
+        CnfClause({Variable("A", False, True), Variable("C", True, False)}),
+        CnfClause({Variable("B", True, False)}),
+    }
+    symbols = find_clause_symbols(clauses)
+    p, value = find_pure_symbol(symbols, clauses, {"A": False, "B": False, "C": True})
+    assert (p, value) == (None, False)
+
+    clauses = {
+        CnfClause(
+            {
+                Variable("A", False, True),
+                Variable("B", False, True),
+                Variable("C", False, False),
+            }
+        ),
+        CnfClause({Variable("A", False, True), Variable("C", True, False)}),
+        CnfClause({Variable("B", True, False)}),
+    }
+    symbols = find_clause_symbols(clauses)
+    p, value = find_pure_symbol(symbols, clauses, {"A": False, "B": False, "C": True})
+    assert (p, value) == ("A", False)
+
+    clauses = {
+        CnfClause(
+            {
+                Variable("A", False, True),
+                Variable("B", False, True),
+                Variable("C", True, False),
+            }
+        ),
+        CnfClause({Variable("A", True, True), Variable("C", True, False)}),
+        CnfClause({Variable("B", True, False)}),
+    }
+    symbols = find_clause_symbols(clauses)
+    p, value = find_pure_symbol(symbols, clauses, {"A": False, "B": False, "C": True})
+    assert (p, value) == ("C", True)
