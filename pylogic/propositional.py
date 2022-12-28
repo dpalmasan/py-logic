@@ -1,7 +1,8 @@
 from enum import Enum
 from abc import ABC, abstractmethod
-from typing import Optional, Set, Tuple
+from typing import List, Optional, Set, Tuple
 from functools import singledispatchmethod
+from collections import defaultdict
 
 
 class Operator(Enum):
@@ -373,48 +374,63 @@ class CnfParser:
         return cnf_clauses
 
 
-def pl_resolution(kb: PropLogicKB, alpha: Clause, maxit=1000) -> bool:
+def pl_resolution(kb: PropLogicKB, alpha: Clause, maxit=1000) -> bool:  # noqa: C901
     parser = CnfParser()
-    clauses = kb.clauses.copy() | parser.parse(to_cnf(~alpha))
-    new = set()
+    alpha_cnf = parser.parse(to_cnf(~alpha))
+
+    kb = PropLogicKB(kb.clauses.copy())
+    interesting_clauses = PropLogicKB()
+    for clause in alpha_cnf:
+        interesting_clauses.add(clause)
+
+    new_knowledge = PropLogicKB()
+
     it = 1
-    processed_resolvers: Set[Tuple[CnfClause, CnfClause, Variable]] = set()
     while it <= maxit:
-        for ci in clauses:
-            for cj in clauses:
-                if ci == cj:
-                    continue
-                c1 = ci if len(ci) < len(cj) else cj
-                c2 = ci if c1 != ci else cj
-                candidate_literals = []
-                for literal in c1.literals:
-                    if ~literal in c2.literals:
-                        candidate_literals.append(literal)
-                resolvents = set()
-                for literal in candidate_literals:
-                    if (c1, c2, literal) in processed_resolvers or (
-                        c1,
-                        c2,
-                        ~literal,
-                    ) in processed_resolvers:
-                        continue
+        literal_clause_map = defaultdict(list)  # type: ignore
+        for clause in interesting_clauses.clauses:
+            for literal in clause.literals:
+                literal_clause_map[literal].append(clause)  # type: ignore
 
-                    try:
-                        res = c1.resolve(c2, literal)
-                    except UselessCnfClauseException:
-                        continue
-                    if res.is_empty_clause():
-                        return True
-                    resolvents.add(res)
+        for clause in kb.clauses:
+            for literal in clause.literals:
+                literal_clause_map[literal].append(clause)  # type: ignore
 
-                    # Memoization to avoid resolving same clauses
-                    processed_resolvers.add((c1, c2, literal))
-                    processed_resolvers.add((c1, c2, ~literal))  # type: ignore
-                new |= resolvents
-        if new.issubset(clauses):
+        clause_pairs: List[Tuple[CnfClause, CnfClause, Variable]] = []
+        for ci in interesting_clauses.clauses:
+            for literal in ci.literals:
+                if ~literal in literal_clause_map:
+                    for cj in literal_clause_map[~literal]:  # type: ignore
+                        clause_pairs.append((ci, cj, literal))
+
+        for ci, cj, literal in clause_pairs:
+            try:
+                res = ci.resolve(cj, literal)
+            except UselessCnfClauseException:
+                continue
+            if res.is_empty_clause():
+                return True
+            else:
+                new_knowledge.add(res)
+
+        added_knowledge = False
+        for clause in new_knowledge.clauses:
+            any_subset = False
+            for old_clause in interesting_clauses.clauses:
+                if set(old_clause.literals).issubset(set(clause.literals)):
+                    any_subset = True
+
+            for old_clause in kb.clauses:
+                if set(old_clause.literals).issubset(set(clause.literals)):
+                    any_subset = True
+
+            if not any_subset:
+                interesting_clauses.add(clause)
+                added_knowledge = True
+
+        if not added_knowledge:
             return False
 
-        clauses |= new
         it += 1
 
     # Negation as failure (exhausted!)
