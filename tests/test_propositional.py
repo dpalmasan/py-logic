@@ -120,3 +120,24 @@ def test_previous_bug_1():
     kb.add(list(r4))
     kb.add(list(r2))
     assert pl_resolution(kb, alpha) is False
+
+
+def test_debug():
+    parser = CnfParser()
+    result = to_cnf(
+        Variable("B13", True)
+        >> (Variable("P12", True) | Variable("P03", True) | Variable("P32", True))
+    )
+    r4 = parser.parse(result)
+
+    result = to_cnf(
+        Variable("P12", True) & Variable("P03", True) & Variable("B13", True)
+    )
+    r2 = parser.parse(result)
+
+    alpha = ~Variable("P32", True)
+
+    kb = PropLogicKB()
+    kb.add(list(r4))
+    kb.add(list(r2))
+    assert pl_resolution(kb, alpha) is False

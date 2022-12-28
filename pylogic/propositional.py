@@ -381,7 +381,8 @@ class CnfParser:
         return cnf_clauses
 
 
-def pl_resolution(kb: PropLogicKB, alpha: Clause, maxit=1000) -> bool:  # noqa: C901
+# noqa: C901
+def pl_resolution(kb: PropLogicKB, alpha: Clause, maxit=1000, threshold=10000) -> bool:
     parser = CnfParser()
     alpha_cnf = parser.parse(to_cnf(~alpha))
 
@@ -435,7 +436,7 @@ def pl_resolution(kb: PropLogicKB, alpha: Clause, maxit=1000) -> bool:  # noqa: 
                 interesting_clauses.add(clause)
                 added_knowledge = True
 
-        if not added_knowledge:
+        if not added_knowledge or len(interesting_clauses.clauses) >= threshold:
             return False
 
         it += 1
