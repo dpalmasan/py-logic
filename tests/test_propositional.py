@@ -4,6 +4,7 @@ from pylogic.propositional import (
     Variable,
     find_clause_symbols,
     find_pure_symbol,
+    find_unit_clause,
     pl_resolution,
     to_cnf,
     CnfClause,
@@ -200,3 +201,20 @@ def test_find_pure_symbol():
     symbols = find_clause_symbols(clauses)
     p, value = find_pure_symbol(symbols, clauses, {"A": False, "B": False, "C": True})
     assert (p, value) == ("C", True)
+
+
+def test_find_unit_clause():
+    clauses = {
+        CnfClause(
+            {
+                Variable("B", True, True),
+                Variable("C", True, True),
+                Variable("D", True, True),
+            }
+        ),
+    }
+
+    model = {"B": True, "C": True, "D": False}
+
+    p, val = find_unit_clause(clauses, model)
+    assert p == "D" and val is False

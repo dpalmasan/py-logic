@@ -495,8 +495,31 @@ def find_pure_symbol(
     return None, False
 
 
-def find_unit_clause(clauses, model) -> Tuple[str, bool]:
-    pass
+def find_unit_clause(clauses: Set[CnfClause], model) -> Tuple[Optional[str], bool]:
+    """Model should already assign all values
+
+    :param clauses: _description_
+    :type clauses: Set[CnfClause]
+    :param model: _description_
+    :type model: _type_
+    :return: _description_
+    :rtype: Tuple[str, bool]
+    """
+    for clause in clauses:
+        true_literal_symbols = set()
+        for literal in clause.literals:
+            # Search for a unit clause, we look for the positive symbol
+            if literal.identifier in model:
+                value = model[literal.identifier]
+                if literal.is_negated:
+                    value = not value
+                if value:
+                    true_literal_symbols.add(literal.identifier)
+            # If we find positive symbols, a unit clause should contain just 1
+            if len(true_literal_symbols) == 1:
+                unit_clause_symbol = true_literal_symbols.pop()
+                return unit_clause_symbol, model[unit_clause_symbol]
+    return None, False
 
 
 def dpll(clauses: Set[CnfClause], symbols: Set[str], model) -> bool:
