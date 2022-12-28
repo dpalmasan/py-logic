@@ -102,3 +102,21 @@ def test_pl_resolution():
     clauses = parser.parse(cnf)
     kb = PropLogicKB(clauses)
     assert pl_resolution(kb, Variable("P12", False))
+
+
+def test_previous_bug_1():
+    parser = CnfParser()
+    result = to_cnf(
+        Variable("B21", True) >> (Variable("P22", True) | Variable("P31", True))
+    )
+    r4 = parser.parse(result)
+
+    result = to_cnf(~Variable("B11", True))
+    r2 = parser.parse(result)
+
+    alpha = ~Variable("P12", True)
+
+    kb = PropLogicKB()
+    kb.add(list(r4))
+    kb.add(list(r2))
+    assert pl_resolution(kb, alpha) is False

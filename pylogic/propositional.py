@@ -1,6 +1,6 @@
 from enum import Enum
 from abc import ABC, abstractmethod
-from typing import List, Optional, Set, Tuple
+from typing import DefaultDict, List, Optional, Set, Tuple
 from functools import singledispatchmethod
 from collections import defaultdict
 
@@ -294,6 +294,13 @@ class CnfClause:
     def __len__(self) -> int:
         return len(self._literals)
 
+    def issubset(self, other) -> bool:
+        subset = True
+        for literal in self.literals:
+            if literal not in other.literals:
+                subset = False
+        return subset
+
 
 class PropLogicKB:
     def __init__(self, clauses: Optional[Set[CnfClause]] = None):
@@ -387,7 +394,7 @@ def pl_resolution(kb: PropLogicKB, alpha: Clause, maxit=1000) -> bool:  # noqa: 
 
     it = 1
     while it <= maxit:
-        literal_clause_map = defaultdict(list)  # type: ignore
+        literal_clause_map: DefaultDict[Variable, List[CnfClause]] = defaultdict(list)
         for clause in interesting_clauses.clauses:
             for literal in clause.literals:
                 literal_clause_map[literal].append(clause)  # type: ignore
@@ -407,7 +414,7 @@ def pl_resolution(kb: PropLogicKB, alpha: Clause, maxit=1000) -> bool:  # noqa: 
             try:
                 res = ci.resolve(cj, literal)
             except UselessCnfClauseException:
-                continue
+                pass
             if res.is_empty_clause():
                 return True
             else:
@@ -417,11 +424,11 @@ def pl_resolution(kb: PropLogicKB, alpha: Clause, maxit=1000) -> bool:  # noqa: 
         for clause in new_knowledge.clauses:
             any_subset = False
             for old_clause in interesting_clauses.clauses:
-                if set(old_clause.literals).issubset(set(clause.literals)):
+                if old_clause.issubset(clause):
                     any_subset = True
 
             for old_clause in kb.clauses:
-                if set(old_clause.literals).issubset(set(clause.literals)):
+                if old_clause.issubset(clause):
                     any_subset = True
 
             if not any_subset:
