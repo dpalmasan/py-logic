@@ -314,24 +314,25 @@ class CnfClause:
 
     def is_true(self, model) -> Optional[bool]:
         for literal in self.literals:
-            if literal in model:
-                literal.truthyness = model[literal]
-            elif ~literal in model:
-                literal.truthyness = ~model[~literal]
+            if literal.identifier in model:
+                if literal.is_negated:
+                    literal.truthyness = not model[literal.identifier]
+                else:
+                    literal.truthyness = model[literal.identifier]
             else:
                 literal.truthyness = None
-        if (
-            reduce(
-                lambda x, y: x is None and y is None,
-                (literal.truthyness for literal in self.literals),
-            )
-            is None
-        ):
-            return None
-        return reduce(
+
+        is_true = reduce(
             lambda x, y: x is True or y is True,
             (literal.truthyness for literal in self.literals),
         )
+        if is_true:
+            return True
+
+        for literal in self.literals:
+            if literal.truthyness is None:
+                return None
+        return False
 
 
 class PropLogicKB:
@@ -479,7 +480,7 @@ def pl_resolution(kb: PropLogicKB, alpha: Clause, maxit=1000) -> bool:
 
 def find_pure_symbol(
     symbols: Set[str], clauses: Set[CnfClause], model: Dict[str, bool]
-) -> Tuple[Optional[str], bool]:
+) -> Tuple[Optional[str], Optional[bool]]:
     variables = set()
     for symbol in symbols:
         for clause in clauses:
@@ -492,10 +493,12 @@ def find_pure_symbol(
             if literal in variables and ~literal not in variables:
                 return literal.identifier, model[literal.identifier]
 
-    return None, False
+    return None, None
 
 
-def find_unit_clause(clauses: Set[CnfClause], model) -> Tuple[Optional[str], bool]:
+def find_unit_clause(
+    clauses: Set[CnfClause], model, previously_seen: Set[str]
+) -> Tuple[Optional[str], Optional[bool]]:
     """Model should already assign all values
 
     :param clauses: _description_
@@ -506,43 +509,64 @@ def find_unit_clause(clauses: Set[CnfClause], model) -> Tuple[Optional[str], boo
     :rtype: Tuple[str, bool]
     """
     for clause in clauses:
-        true_literal_symbols = set()
         for literal in clause.literals:
             # Search for a unit clause, we look for the positive symbol
+            false_literals = set()
             if literal.identifier in model:
                 value = model[literal.identifier]
                 if literal.is_negated:
                     value = not value
-                if value:
-                    true_literal_symbols.add(literal.identifier)
+                if value is False:
+                    false_literals.add(literal)
             # If we find positive symbols, a unit clause should contain just 1
-            if len(true_literal_symbols) == 1:
-                unit_clause_symbol = true_literal_symbols.pop()
+            if len(clause.literals) - len(false_literals) == 1:
+                unit_clause_symbol = next(
+                    iter(clause.literals - false_literals)
+                ).identifier
+                if unit_clause_symbol in previously_seen:
+                    continue
                 return unit_clause_symbol, model[unit_clause_symbol]
-    return None, False
+    return None, None
 
 
-def dpll(clauses: Set[CnfClause], symbols: Set[str], model) -> bool:
-    # If all clauses True in model
-    if reduce(
+def dpll(
+    clauses: Set[CnfClause], symbols: Set[str], model, previously_seen: Set[str]
+) -> bool:
+    all_clauses_true = reduce(
         lambda x, y: (x is True and y is True),
         (clause.is_true(model) for clause in clauses),
-    ):
-        True
-
+    )
+    if all_clauses_true:
+        print(model)
+        return True
     # If some clause is True in model
     for clause in clauses:
-        if not clause.is_true(model):
+        if clause.is_true(model) is not None and not clause.is_true(model):
             return False
 
     p, value = find_pure_symbol(symbols, clauses, model)
     # if p is not None:
-    if p is not None:
-        model[p] = value
-        symbols.remove(p)
-        return dpll(clauses, symbols, model)
-    p, value = find_unit_clause(clauses, model)
-    return False
+    if p is not None and value is not None:
+        d1 = model.copy()
+        d1[p] = value
+        return dpll(clauses, symbols - {p}, d1, previously_seen)
+    p, value = find_unit_clause(clauses, model, previously_seen)
+    if p is not None and value is not None:
+        d1 = model.copy()
+        d1[p] = value
+        previously_seen.add(p)
+        return dpll(clauses, symbols - {p}, d1, previously_seen)
+
+    symbols_ = symbols.copy()
+    p = symbols_.pop()
+    rest = symbols_
+    d1 = model.copy()
+    d1[p] = True
+    d2 = model.copy()
+    d2[p] = False
+    return dpll(clauses, rest, d1, previously_seen) or dpll(
+        clauses, rest, d2, previously_seen
+    )
 
 
 def find_clause_symbols(cnf_clauses: Set[CnfClause]) -> Set[str]:
@@ -554,7 +578,7 @@ def find_clause_symbols(cnf_clauses: Set[CnfClause]) -> Set[str]:
     return symbols
 
 
-def dpll__satisfiable(s: Clause) -> bool:
+def dpll_satisfiable(s: Clause) -> bool:
     if not isinstance(s, Clause):
         raise Exception("Input must be a propositional logic sentence.")
 
@@ -562,4 +586,4 @@ def dpll__satisfiable(s: Clause) -> bool:
     clauses = to_cnf(s)
     cnf_clauses = parser.parse(clauses)
     symbols = find_clause_symbols(cnf_clauses)
-    return dpll(cnf_clauses, symbols, [])
+    return dpll(cnf_clauses, symbols, defaultdict(lambda: None), set())

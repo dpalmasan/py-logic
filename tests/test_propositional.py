@@ -2,6 +2,7 @@ from pylogic.propositional import (
     CnfParser,
     PropLogicKB,
     Variable,
+    dpll_satisfiable,
     find_clause_symbols,
     find_pure_symbol,
     find_unit_clause,
@@ -170,7 +171,7 @@ def test_find_pure_symbol():
     }
     symbols = find_clause_symbols(clauses)
     p, value = find_pure_symbol(symbols, clauses, {"A": False, "B": False, "C": True})
-    assert (p, value) == (None, False)
+    assert (p, value) == (None, None)
 
     clauses = {
         CnfClause(
@@ -205,16 +206,25 @@ def test_find_pure_symbol():
 
 def test_find_unit_clause():
     clauses = {
-        CnfClause(
-            {
-                Variable("B", True, True),
-                Variable("C", True, True),
-                Variable("D", True, True),
-            }
-        ),
+        CnfClause({Variable("B", True, True), Variable("C", True, False)}),
     }
 
-    model = {"B": True, "C": True, "D": False}
+    model = {"B": False}
 
-    p, val = find_unit_clause(clauses, model)
-    assert p == "D" and val is False
+    p, val = find_unit_clause(clauses, model, set())
+    assert p is None and val is None
+
+
+def test_dpll():
+    b11 = Variable("b11", False, None)
+    p12 = Variable("p12", False, None)
+    p21 = Variable("p21", False, None)
+
+    # Simple case
+    assert dpll_satisfiable(b11) is True
+
+    # More complex case
+    clause = ((b11 >> p12 | p21) & ~b11) & ~p12
+    assert dpll_satisfiable(clause) is True
+
+    assert dpll_satisfiable(b11 & ~b11) is False
