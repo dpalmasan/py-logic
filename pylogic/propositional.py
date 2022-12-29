@@ -358,6 +358,13 @@ class PropLogicKB:
                 raise TypeError("clauses must be a list of CnfClause")
             self.add(clause)
 
+    @add.register
+    def _(self, clauses: set) -> None:
+        for clause in clauses:
+            if type(clause) != CnfClause:
+                raise TypeError("clauses must be a set of CnfClause")
+            self.add(clause)
+
 
 class CnfParser:
     def __init__(self):
