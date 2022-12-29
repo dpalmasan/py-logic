@@ -1,6 +1,6 @@
 from enum import Enum
 from abc import ABC, abstractmethod
-from typing import DefaultDict, Dict, List, Optional, Set, Tuple
+from typing import DefaultDict, Dict, List, Optional, Set, Tuple, Union, no_type_check
 from functools import reduce, singledispatchmethod
 from collections import defaultdict
 
@@ -335,12 +335,11 @@ class CnfClause:
         return False
 
 
-class PropLogicKB:
-    def __init__(self, clauses: Optional[Set[CnfClause]] = None):
-        self._clauses = clauses if clauses else set()
+class PropLogicKB(ABC):
+    _clauses: Optional[Union[Set[Clause], List[Clause]]] = None
 
     @property
-    def clauses(self) -> Set[CnfClause]:
+    def clauses(self) -> Optional[Union[Set[Clause], List[Clause]]]:
         return self._clauses
 
     @singledispatchmethod
@@ -348,22 +347,61 @@ class PropLogicKB:
         raise NotImplementedError(f"Cannot add objects of type {type(arg)}")
 
     @add.register
-    def _(self, clause: CnfClause) -> None:
-        self._clauses.add(clause)
+    def _(self, clause: Clause) -> None:
+        if isinstance(self.clauses, set):
+            self.clauses.add(clause)
+        self.clauses.append(clause)  # type: ignore
 
+    @no_type_check
     @add.register
-    def _(self, clauses: list) -> None:
+    def _(self, clause: CnfClause) -> None:  # type: ignore
+        if not isinstance(self, ResolutionKB):
+            raise NotImplementedError("Cannot add CnfClause to ResolutionKB")
+        self.clauses.add(clause)
+
+    @no_type_check
+    @add.register
+    def _(self, clauses: list) -> None:  # type: ignore
         for clause in clauses:
-            if type(clause) != CnfClause:
-                raise TypeError("clauses must be a list of CnfClause")
+            self.clauses.add(clause)
+
+    @no_type_check
+    @add.register
+    def _(self, clauses: set) -> None:  # type: ignore
+        for clause in clauses:
             self.add(clause)
 
-    @add.register
-    def _(self, clauses: set) -> None:
+    @abstractmethod
+    def query(self, alpha: Clause) -> bool:
+        pass
+
+
+class ResolutionKB(PropLogicKB):
+    @no_type_check
+    def __init__(self, clauses: Optional[Union[Set[Clause], List[Clause]]] = None):
+        clauses = set() if clauses is None else clauses
+        cnf_clauses = set()
+        parser = CnfParser()
         for clause in clauses:
-            if type(clause) != CnfClause:
-                raise TypeError("clauses must be a set of CnfClause")
-            self.add(clause)
+            if not isinstance(clause, CnfClause):
+                cnf_clause = parser.parse(to_cnf(clause))
+                cnf_clauses |= cnf_clause
+            else:
+                cnf_clauses |= {clause}
+
+        self._clauses = cnf_clauses if cnf_clauses else set()
+
+    def query(self, alpha: Clause) -> bool:
+        return pl_resolution(self, alpha)
+
+
+class DpllKB(PropLogicKB):
+    def __init__(self, clauses: Optional[Union[Set[Clause], List[Clause]]] = None):
+        self._clauses = list(clauses) if clauses is not None else []
+
+    @no_type_check
+    def query(self, alpha: Clause) -> bool:
+        return dpll_satisfiable(reduce(lambda x, y: x & y, self.clauses) & alpha)
 
 
 class CnfParser:
@@ -422,16 +460,17 @@ class CnfParser:
 
 
 # noqa: C901
-def pl_resolution(kb: PropLogicKB, alpha: Clause, maxit=1000) -> bool:
+def pl_resolution(kb: ResolutionKB, alpha: Clause, maxit=1000) -> bool:
     parser = CnfParser()
     alpha_cnf = parser.parse(to_cnf(~alpha))
 
-    kb = PropLogicKB(kb.clauses.copy())
-    interesting_clauses = PropLogicKB()
+    assert kb.clauses is not None
+    kb = ResolutionKB(kb.clauses.copy())
+    interesting_clauses = ResolutionKB()
     for clause in alpha_cnf:
         interesting_clauses.add(clause)
 
-    new_knowledge = PropLogicKB()
+    new_knowledge = ResolutionKB()
 
     it = 1
     while it <= maxit:
@@ -440,7 +479,8 @@ def pl_resolution(kb: PropLogicKB, alpha: Clause, maxit=1000) -> bool:
             for literal in clause.literals:
                 literal_clause_map[literal].append(clause)  # type: ignore
 
-        for clause in kb.clauses:
+        assert isinstance(kb.clauses, list) or isinstance(kb.clauses, set)
+        for clause in kb.clauses:  # type: ignore
             for literal in clause.literals:
                 literal_clause_map[literal].append(clause)  # type: ignore
 
@@ -544,7 +584,6 @@ def dpll(
         (clause.is_true(model) for clause in clauses),
     )
     if all_clauses_true:
-        print(model)
         return True
     # If some clause is True in model
     for clause in clauses:

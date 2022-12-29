@@ -1,12 +1,12 @@
 from pylogic.propositional import (
     CnfParser,
-    PropLogicKB,
+    DpllKB,
+    ResolutionKB,
     Variable,
     dpll_satisfiable,
     find_clause_symbols,
     find_pure_symbol,
     find_unit_clause,
-    pl_resolution,
     to_cnf,
     CnfClause,
 )
@@ -56,7 +56,7 @@ def test_cnf_class():
 
 
 def test_pl_kb():
-    kb = PropLogicKB()
+    kb = ResolutionKB()
     assert len(kb.clauses) == 0
 
     kb.add(CnfClause({p, q, a}))
@@ -104,8 +104,8 @@ def test_pl_resolution():
     cnf = to_cnf((B11 >> (P12 | P21)) & ~B11)
     parser = CnfParser()
     clauses = parser.parse(cnf)
-    kb = PropLogicKB(clauses)
-    assert pl_resolution(kb, Variable("P12", False))
+    kb = ResolutionKB(clauses)
+    assert kb.query(Variable("P12", False))
 
 
 def test_previous_bug_1():
@@ -120,10 +120,10 @@ def test_previous_bug_1():
 
     alpha = ~Variable("P12", True)
 
-    kb = PropLogicKB()
+    kb = ResolutionKB()
     kb.add(list(r4))
     kb.add(list(r2))
-    assert pl_resolution(kb, alpha) is False
+    assert kb.query(alpha) is False
 
 
 def test_debug():
@@ -141,10 +141,10 @@ def test_debug():
 
     alpha = ~Variable("P32", True)
 
-    kb = PropLogicKB()
+    kb = ResolutionKB()
     kb.add(list(r4))
     kb.add(list(r2))
-    assert pl_resolution(kb, alpha) is False
+    assert kb.query(alpha) is False
 
 
 def test_find_clause_symbols():
@@ -228,3 +228,24 @@ def test_dpll():
     assert dpll_satisfiable(clause) is True
 
     assert dpll_satisfiable(b11 & ~b11) is False
+
+
+def test_dpll_kb():
+    # Example from AIMA
+    B11 = Variable("B11", True)
+    P12 = Variable("P12", True)
+    P21 = Variable("P21", True)
+    kb = DpllKB([(B11 >> (P12 | P21)), ~B11])
+    assert kb.query(Variable("P12", False))
+
+
+def test_debug_dpll():
+    kb = DpllKB()
+    kb.add(
+        Variable("B13", True)
+        >> (Variable("P12", True) | Variable("P03", True) | Variable("P32", True))
+    )
+
+    kb.add(Variable("P12", True) & Variable("P03", True) & Variable("B13", True))
+    alpha = ~Variable("P32", True)
+    assert kb.query(alpha) is False
