@@ -348,22 +348,28 @@ class PropLogicKB(ABC):
 
     @add.register
     def _(self, clause: Clause) -> None:
+        if isinstance(self, ResolutionKB):
+            clauses = CnfParser().parse(to_cnf(clause))
+            for c in clauses:
+                self.add(c)
+            return
+
         if isinstance(self.clauses, set):
             self.clauses.add(clause)
-        self.clauses.append(clause)  # type: ignore
+        else:
+            self.clauses.append(clause)  # type: ignore
 
     @no_type_check
     @add.register
     def _(self, clause: CnfClause) -> None:  # type: ignore
-        if not isinstance(self, ResolutionKB):
-            raise NotImplementedError("Cannot add CnfClause to ResolutionKB")
+        assert isinstance(self, PropLogicKB)
         self.clauses.add(clause)
 
     @no_type_check
     @add.register
     def _(self, clauses: list) -> None:  # type: ignore
         for clause in clauses:
-            self.clauses.add(clause)
+            self.add(clause)
 
     @no_type_check
     @add.register

@@ -59,9 +59,9 @@ def test_pl_kb():
     kb = ResolutionKB()
     assert len(kb.clauses) == 0
 
-    kb.add(CnfClause({p, q, a}))
+    kb.add(p | q | a)
     assert kb.clauses == {CnfClause({p, q, a})}
-    kb.add([CnfClause({p, q}), CnfClause({r})])
+    kb.add([p | q, r])
     assert kb.clauses == {CnfClause({p, q, a}), CnfClause({p, q}), CnfClause({r})}
 
 
