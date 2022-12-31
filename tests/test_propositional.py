@@ -459,3 +459,4 @@ def test_horn_clause():
 
     hc = HornClause([a3, a1, a2], b)
     assert repr(hc) == "a1 ^ a2 ^ a3 => b"
+    assert hc == HornClause([a1, a2, a3], b)

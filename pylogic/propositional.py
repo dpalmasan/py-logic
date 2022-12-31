@@ -494,6 +494,19 @@ class HornClause:
         antecedents = sorted(self.antecedents, key=lambda x: str(x))
         return f"{' ^ '.join([str(~v) for v in antecedents])} => {self.consequent}"
 
+    def __hash__(self) -> int:
+        return hash(str(self))
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, HornClause):
+            return False
+        antecedents = sorted(self.antecedents, key=lambda x: str(x))
+        other_ant = sorted(other.antecedents, key=lambda x: str(x))
+        if antecedents != other_ant:
+            return False
+
+        return self.consequent == other.consequent
+
 
 # noqa: C901
 def pl_resolution(kb: ResolutionKB, alpha: Clause, maxit=1000) -> bool:
