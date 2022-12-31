@@ -2,9 +2,11 @@ from functools import reduce
 from itertools import product
 from typing import List
 from pylogic.propositional import (
+    BadHornClause,
     Clause,
     CnfParser,
     DpllKB,
+    HornClause,
     ResolutionKB,
     Variable,
     dpll_satisfiable,
@@ -14,6 +16,7 @@ from pylogic.propositional import (
     to_cnf,
     CnfClause,
 )
+import pytest
 
 p = Variable("P", True)
 q = Variable("Q", True)
@@ -443,3 +446,16 @@ def test_debug_case_2():
     kb.add(rw2)
 
     assert kb.query(~p13) is True
+
+
+def test_horn_clause():
+    a1 = Variable("a1", is_negated=True)
+    a2 = Variable("a2", is_negated=True)
+    a3 = Variable("a3", is_negated=True)
+    b = Variable("b", is_negated=False)
+
+    with pytest.raises(BadHornClause):
+        HornClause([a1, a2, ~a3], b)
+
+    hc = HornClause([a3, a1, a2], b)
+    assert repr(hc) == "a1 ^ a2 ^ a3 => b"

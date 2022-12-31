@@ -465,6 +465,36 @@ class CnfParser:
         return cnf_clauses
 
 
+class BadHornClause(Exception):
+    pass
+
+
+class HornClause:
+    def __init__(self, antecedents: List[Variable], consequent: Variable):
+        current_sign = None
+        for antecedent in antecedents:
+            if current_sign is None:
+                current_sign = antecedent.is_negated
+            else:
+                if antecedent.is_negated != current_sign:
+                    raise BadHornClause("Antecedents should have the same sign")
+
+        self._consequent = consequent
+        self._antecedents = antecedents
+
+    @property
+    def antecedents(self) -> List[Variable]:
+        return self._antecedents
+
+    @property
+    def consequent(self) -> Variable:
+        return self._consequent
+
+    def __repr__(self):
+        antecedents = sorted(self.antecedents, key=lambda x: str(x))
+        return f"{' ^ '.join([str(~v) for v in antecedents])} => {self.consequent}"
+
+
 # noqa: C901
 def pl_resolution(kb: ResolutionKB, alpha: Clause, maxit=1000) -> bool:
     parser = CnfParser()
