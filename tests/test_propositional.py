@@ -1,6 +1,9 @@
+from functools import reduce
+from typing import List
 from pylogic.propositional import (
     BadHornClause,
     BicondClause,
+    Clause,
     CnfParser,
     DpllKB,
     HornClause,
@@ -259,6 +262,52 @@ def test_debug_dpll():
     kb.add(Variable("P12", True) & Variable("P03", True) & Variable("B13", True))
     alpha = ~Variable("P32", True)
     assert kb.query(alpha) is False
+
+
+def _one_wumpus_rule() -> Clause:
+    """There should exist one wumpus."""
+    map_width = 3
+    map_height = 3
+    literals: List[Variable] = []
+    for i in range(map_width):
+        for j in range(map_height):
+            literals.append(Variable(f"W{i}{j}", is_negated=False, truthyness=None))
+
+    return reduce(lambda x, y: x | y, literals)  # type: ignore
+
+
+def _at_most_one_wumpus() -> Clause:
+    """There must be just one Wumpus."""
+    map_width = 4
+    map_height = 4
+    clauses = []
+    for j in range(map_height):
+        for i in range(map_width):
+            if i > 0:
+                clauses.append(
+                    Variable(f"W{i}{j}", is_negated=True, truthyness=None)
+                    | Variable(f"W{i - 1}{j}", is_negated=True, truthyness=None)
+                )
+            if i < map_width - 1:
+                clauses.append(
+                    Variable(f"W{i}{j}", is_negated=True, truthyness=None)
+                    | Variable(f"W{i + 1}{j}", is_negated=True, truthyness=None)
+                )
+            if j > 0:
+                clauses.append(
+                    Variable(f"W{i}{j}", is_negated=True, truthyness=None)
+                    | Variable(f"W{i}{j - 1}", is_negated=True, truthyness=None)
+                )
+
+            if j < map_height - 1:
+                if j > 0:
+                    clauses.append(
+                        Variable(f"W{i}{j}", is_negated=True, truthyness=None)
+                        | Variable(f"W{i}{j + 1}", is_negated=True, truthyness=None)
+                    )
+
+    # type: ignore
+    return reduce(lambda x, y: x & y, clauses)
 
 
 def test_horn_clause():
