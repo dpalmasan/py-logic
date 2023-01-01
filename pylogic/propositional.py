@@ -482,16 +482,25 @@ class BadHornClause(Exception):
 
 
 class HornClause:
-    def __init__(self, antecedents: List[Variable], consequent: Variable):
-        current_sign = None
+    def __init__(
+        self, antecedents: List[Variable], consequent: Union[Variable, bool] = None
+    ):
         for antecedent in antecedents:
-            if current_sign is None:
-                current_sign = antecedent.is_negated
-            else:
-                if antecedent.is_negated != current_sign:
-                    raise BadHornClause("Antecedents should have the same sign")
+            if antecedent.is_negated:
+                raise BadHornClause("Antecedents should not be negated")
 
-        self._consequent = consequent
+        if len(antecedents) == 1 and consequent is None:
+            self._antecedents = antecedents
+            self._consequent = True
+            return
+
+        if isinstance(consequent, Variable) and consequent.is_negated:
+            self._consequent = False
+            antecedents.append(consequent)
+        elif consequent is None:
+            self._consequent = False
+        else:
+            self._consequent = consequent  # type: ignore
         self._antecedents = antecedents
 
     @property
@@ -499,12 +508,12 @@ class HornClause:
         return self._antecedents
 
     @property
-    def consequent(self) -> Variable:
+    def consequent(self) -> Union[Variable, bool]:
         return self._consequent
 
     def __repr__(self):
         antecedents = sorted(self.antecedents, key=lambda x: str(x))
-        return f"{' ^ '.join([str(~v) for v in antecedents])} => {self.consequent}"
+        return f"{' ^ '.join([str(v) for v in antecedents])} => {self.consequent}"
 
     def __hash__(self) -> int:
         return hash(str(self))
@@ -518,6 +527,36 @@ class HornClause:
             return False
 
         return self.consequent == other.consequent
+
+    @classmethod
+    def from_clause(cls, clause: Clause):
+        raise NotImplementedError("Not supported yet")
+
+
+def pl_fc_entails(kb: Set[HornClause], q: Variable) -> bool:
+    # TODO: Deal with cases with contradictions on known variable values
+    agenda: Set[Union[Variable, bool]] = set()
+    count = defaultdict(lambda: 0)
+    for hc in kb:
+        for variable in hc.antecedents:
+            if variable.truthyness is True:
+                agenda.add(variable)
+        count[hc] = len(hc.antecedents)
+
+    inferred: Dict[Variable, bool] = defaultdict(lambda: False)
+    while agenda:
+        p = agenda.pop()
+        if not inferred[p]:  # type: ignore
+            inferred[p] = True  # type: ignore
+        for hc in kb:
+            if p not in hc.antecedents:
+                continue
+            count[hc] -= 1
+            if count[hc] == 0:
+                if hc.consequent == q:
+                    return True
+                agenda.add(hc.consequent)
+    return False
 
 
 # noqa: C901

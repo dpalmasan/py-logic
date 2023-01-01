@@ -13,6 +13,7 @@ from pylogic.propositional import (
     find_clause_symbols,
     find_pure_symbol,
     find_unit_clause,
+    pl_fc_entails,
     to_cnf,
     CnfClause,
 )
@@ -311,9 +312,9 @@ def _at_most_one_wumpus() -> Clause:
 
 
 def test_horn_clause():
-    a1 = Variable("a1", is_negated=True)
-    a2 = Variable("a2", is_negated=True)
-    a3 = Variable("a3", is_negated=True)
+    a1 = Variable("a1", is_negated=False)
+    a2 = Variable("a2", is_negated=False)
+    a3 = Variable("a3", is_negated=False)
     b = Variable("b", is_negated=False)
 
     with pytest.raises(BadHornClause):
@@ -322,3 +323,29 @@ def test_horn_clause():
     hc = HornClause([a3, a1, a2], b)
     assert repr(hc) == "a1 ^ a2 ^ a3 => b"
     assert hc == HornClause([a1, a2, a3], b)
+    hc = HornClause([a1, a2, a3], ~b)
+    assert hc.consequent is False
+    hc = HornClause([a1, a2, a3], None)
+    assert hc.consequent is False
+
+
+def test_pl_fc_entails():
+    A = Variable("A", is_negated=False, truthyness=True)
+    B = Variable("B", is_negated=False, truthyness=True)
+    L = Variable("L", is_negated=False)
+    P = Variable("P", is_negated=False)
+    M = Variable("M", is_negated=False)
+    Q = Variable("Q", is_negated=False)
+    kb = {
+        HornClause([A]),
+        HornClause([B]),
+        HornClause([A, B], L),
+        HornClause([A, P], L),
+        HornClause([B, L], M),
+        HornClause([L, M], P),
+        HornClause([P], Q),
+    }
+
+    assert pl_fc_entails(kb, Q) is True
+    X = Variable("X", is_negated=False)
+    assert pl_fc_entails(kb, X) is False
