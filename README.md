@@ -39,31 +39,40 @@ $$(B_{11} \Leftrightarrow (P_{12} \vee P_{21})) \wedge \neg B_{11}$$
 
 And we want to prove $\alpha = \neg P_{12}$.
 
-We could use `pl_resolution` function, and also create a KB in Conjunctive Normal Form (CNF), using the following code:
+We could use several algorithms, based on desired KB type as shown in the code below.
 
 ```python
 from pylogic.propositional import (
-    CnfParser,
-    PropLogicKB,
+    BicondClause,
+    DpllKB,
+    ResolutionKB,
     Variable,
-    pl_resolution,
-    to_cnf,
 )
 
 B11 = Variable("B11", True)
 P12 = Variable("P12", True)
 P21 = Variable("P21", True)
-cnf = to_cnf((B11 >> (P12 | P21)) & ~B11)
-parser = CnfParser()
-clauses = parser.parse(cnf)
-kb = PropLogicKB(clauses)
-print(pl_resolution(kb, Variable("P12", False)))
+clauses = BicondClause(B11, (P12 | P21)) & ~B11
+kb = ResolutionKB(clauses)
+alpha = Variable("P12", False)
+print(f"Ask entailment of {alpha} using resolution:", kb.query(alpha))
+kb = DpllKB(clauses)
+print(f"Ask entailment of {alpha} using DPLL algorithm:", kb.query(alpha))
+
+kb = ResolutionKB(clauses)
+alpha = B11 & ~B11
+print(f"Ask entailment of {alpha} using resolution:", kb.query(alpha))
+kb = DpllKB(clauses)
+print(f"Ask entailment of {alpha} using DPLL algorithm:", kb.query(alpha))
 ```
 
 Output:
 
 ```
-True
+Ask entailment of P12 using resolution: True
+Ask entailment of P12 using DPLL algorithm: True
+Ask entailment of ¬B11 ^ B11 using resolution: False
+Ask entailment of ¬B11 ^ B11 using DPLL algorithm: False
 ```
 
 ## Goals

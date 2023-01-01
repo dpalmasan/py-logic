@@ -381,16 +381,21 @@ class PropLogicKB(ABC):
 
 class ResolutionKB(PropLogicKB):
     @no_type_check
-    def __init__(self, clauses: Optional[Union[Set[Clause], List[Clause]]] = None):
+    def __init__(
+        self, clauses: Optional[Union[Set[Clause], List[Clause], Clause]] = None
+    ):
         clauses = set() if clauses is None else clauses
         cnf_clauses = set()
         parser = CnfParser()
-        for clause in clauses:
-            if not isinstance(clause, CnfClause):
-                cnf_clause = parser.parse(to_cnf(clause))
-                cnf_clauses |= cnf_clause
-            else:
-                cnf_clauses |= {clause}
+        if not isinstance(clauses, Clause):
+            for clause in clauses:
+                if not isinstance(clause, CnfClause):
+                    cnf_clause = parser.parse(to_cnf(clause))
+                    cnf_clauses |= cnf_clause
+                else:
+                    cnf_clauses |= {clause}
+        else:
+            cnf_clauses = parser.parse(to_cnf(clauses))
 
         self._clauses = cnf_clauses if cnf_clauses else set()
 
@@ -399,8 +404,18 @@ class ResolutionKB(PropLogicKB):
 
 
 class DpllKB(PropLogicKB):
-    def __init__(self, clauses: Optional[Union[Set[Clause], List[Clause]]] = None):
-        self._clauses = list(clauses) if clauses is not None else []
+    def __init__(
+        self, clauses: Optional[Union[Set[Clause], List[Clause], Clause]] = None
+    ):
+        self._clauses = []
+
+        if clauses is None:
+            return
+
+        if isinstance(clauses, Clause):
+            self.add(clauses)
+            return
+        self._clauses.extend(clauses)
 
     @no_type_check
     def query(self, alpha: Clause) -> bool:
