@@ -46,9 +46,6 @@ class Clause(ABC):
     def __gt__(self, other) -> "Clause":
         return CondClause(self, other)
 
-    def __rshift__(self, other) -> "Clause":
-        return BicondClause(self, other)
-
     def __repr__(self) -> str:
         return f"{self.lhs.__repr__()} {self.OP.value} {self.rhs.__repr__()}"
 
