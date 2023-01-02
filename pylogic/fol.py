@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Tuple
+from typing import Dict, Tuple, no_type_check
 
 from pylogic.common_defs import Operator
 
@@ -24,7 +24,13 @@ class Term:
         return self._type
 
     def __repr__(self) -> str:
-        return f"{self.identifier}"
+        return f"Term({self.identifier}, type={self.type})"
+
+    def __eq__(self, other) -> bool:
+        return self.identifier == other.identifier and self.type == other.type
+
+    def __hash__(self) -> int:
+        return hash(str(self))
 
 
 class Sentence(ABC):
@@ -82,6 +88,10 @@ class Predicate(Sentence):
     def is_negated(self) -> bool:
         return self._is_negated
 
+    @property
+    def args(self) -> Tuple[Term]:
+        return self._args
+
     def __repr__(self) -> str:
         arg_string = ", ".join(map(str, self._args))
         neg = "¬" if self.is_negated else ""
@@ -89,6 +99,16 @@ class Predicate(Sentence):
 
     def __invert__(self) -> "Predicate":
         return Predicate(self.identifier, self._args, not self.is_negated)
+
+    def __hash__(self) -> int:
+        return hash(self.__repr__())
+
+    def __eq__(self, other) -> bool:
+        return (
+            self.identifier == other.identifier
+            and self.args == other.args
+            and self.is_negated == other.is_negated
+        )
 
 
 class OrSentence(Sentence):
@@ -100,3 +120,28 @@ class OrSentence(Sentence):
 
     # def __invert__(self) -> Sentence:
     #     return ~self._s2 & ~self._s1
+
+
+class Substitution:
+    class ConstantAsVariableException(Exception):
+        pass
+
+    def __init__(self, substitution_values: Dict[Term, Term]) -> None:
+        self._substitution_values = substitution_values
+
+    def _arg_exception_handler(self, term: Term) -> Term:
+        if term in self._substitution_values and term.type is TermType.CONSTANT:
+            raise self.ConstantAsVariableException(
+                f"Trying to substitute a constant: {term}, type: {term.type}"
+            )
+
+        return term
+
+    @no_type_check
+    def substitute(self, pred: Predicate) -> Predicate:
+
+        args: Tuple[Term] = tuple(
+            self._substitution_values.get(self._arg_exception_handler(arg), arg)
+            for arg in pred.args
+        )
+        return Predicate(pred.identifier, args)
