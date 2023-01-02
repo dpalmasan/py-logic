@@ -325,6 +325,7 @@ def test_horn_clause():
     assert hc == HornClause([a1, a2, a3], b)
     hc = HornClause([a1, a2, a3], ~b)
     assert hc.consequent is False
+    assert hc == HornClause([a1, a2, a3, b])
     hc = HornClause([a1, a2, a3], None)
     assert hc.consequent is False
 

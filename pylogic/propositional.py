@@ -488,7 +488,7 @@ class HornClause:
 
         if isinstance(consequent, Variable) and consequent.is_negated:
             self._consequent = False
-            antecedents.append(consequent)
+            antecedents.append(~consequent)  # type: ignore
         elif consequent is None:
             self._consequent = False
         else:

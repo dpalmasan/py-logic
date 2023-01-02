@@ -1,4 +1,5 @@
-from pylogic.fol import Predicate, Substitution, Term, TermType
+from pylogic.fol import HornClauseFOL, Predicate, Substitution, Term, TermType
+import pytest
 
 
 def test_predicate():
@@ -29,3 +30,24 @@ def test_substitution():
     print(result)
     print(expected)
     assert result == expected
+
+
+def test_horn_clause_fol():
+    x = Term("x", TermType.VARIABLE)
+    p1 = Predicate("King", (x,))
+    p2 = Predicate("Greedy", (x,))
+    b = Predicate("Evil", (x,))
+
+    with pytest.raises(HornClauseFOL.BadHornClauseFOL):
+        HornClauseFOL([p1, ~p2], b)
+
+    hc = HornClauseFOL([p1, p2], b)
+    assert repr(hc) == (
+        "Greedy(Term(x, type=TermType.VARIABLE)) ^ "
+        "King(Term(x, type=TermType.VARIABLE)) => "
+        "Evil(Term(x, type=TermType.VARIABLE))"
+    )
+    assert hc == HornClauseFOL([p2, p1], b)
+    hc = HornClauseFOL([p1, p2], ~b)
+    assert hc.consequent is False
+    assert hc == HornClauseFOL([p1, b, p2], None)

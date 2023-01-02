@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Dict, Tuple, no_type_check
+from typing import Dict, List, Optional, Tuple, no_type_check, Union
 
 from pylogic.common_defs import Operator
 
@@ -145,3 +145,58 @@ class Substitution:
             for arg in pred.args
         )
         return Predicate(pred.identifier, args)
+
+
+class HornClauseFOL:
+    class BadHornClauseFOL(Exception):
+        pass
+
+    def __init__(
+        self,
+        antecedents: List[Predicate],
+        consequent: Optional[Union[Predicate, bool]] = None,
+    ):
+        for antecedent in antecedents:
+            if antecedent.is_negated:
+                raise HornClauseFOL.BadHornClauseFOL(
+                    "Antecedents should not be negated"
+                )
+
+        if len(antecedents) == 1 and consequent is None:
+            self._antecedents = antecedents
+            self._consequent = True
+            return
+
+        if isinstance(consequent, Predicate) and consequent.is_negated:
+            self._consequent = False
+            antecedents.append(~consequent)
+        elif consequent is None:
+            self._consequent = False
+        else:
+            self._consequent = consequent  # type: ignore
+        self._antecedents = antecedents
+
+    @property
+    def antecedents(self) -> List[Predicate]:
+        return self._antecedents
+
+    @property
+    def consequent(self) -> Union[Predicate, bool]:
+        return self._consequent
+
+    def __repr__(self):
+        antecedents = sorted(self.antecedents, key=lambda x: str(x))
+        return f"{' ^ '.join([str(v) for v in antecedents])} => {self.consequent}"
+
+    def __hash__(self) -> int:
+        return hash(str(self))
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, HornClauseFOL):
+            return False
+        antecedents = sorted(self.antecedents, key=lambda x: str(x))
+        other_ant = sorted(other.antecedents, key=lambda x: str(x))
+        if antecedents != other_ant:
+            return False
+
+        return self.consequent == other.consequent
