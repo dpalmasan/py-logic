@@ -1,17 +1,9 @@
-from enum import Enum
 from abc import ABC, abstractmethod
 from typing import DefaultDict, Dict, List, Optional, Set, Tuple, Union, no_type_check
 from functools import reduce, singledispatchmethod
 from collections import defaultdict
 
-
-class Operator(Enum):
-    AND = "^"
-    OR = "v"
-    COND = "->"
-    BICOND = "<->"
-    VARIABLE = "VAR"
-    NONE = "NONE"
+from pylogic.common_defs import Operator
 
 
 class NonCnfClauseException(Exception):
