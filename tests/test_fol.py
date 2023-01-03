@@ -88,7 +88,11 @@ def test_unify_var():
 def test_unify():
     x = Term("x", TermType.VARIABLE)
     y = Term("x", TermType.VARIABLE)
+    a = Term("A", TermType.CONSTANT)
     s1 = Substitution({Term("z", TermType.VARIABLE): Term("A", TermType.CONSTANT)})
-    s2 = Substitution({Term("z", TermType.VARIABLE): Term("A", TermType.CONSTANT)})
+    s2 = Substitution({Term("z", TermType.VARIABLE): a})
     assert unify(x, y, s1) == s2
     assert unify(x, y, None) is None
+    assert unify(x, a, Substitution({})) == Substitution({x: a})
+    assert unify(a, y, Substitution({})) == Substitution({y: a})
+    assert unify(x, [a], Substitution({})) is None

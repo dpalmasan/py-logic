@@ -239,15 +239,13 @@ def unify(
     if theta is None:
         return None
 
-    if x == y:
-        return theta
-
     if isinstance(x, list) and isinstance(y, list):
         return unify(x[1:], y[1:], unify(x[0], y[0], theta))
 
     if isinstance(x, list) or isinstance(y, list):
         return None
-
+    if x == y:
+        return theta
     if x.type == TermType.VARIABLE:
         return unify_var(x, y, theta)
     if y.type == TermType.VARIABLE:
