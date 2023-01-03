@@ -35,8 +35,6 @@ def test_substitution():
 
     result = sub.substitute(p)
     expected = Predicate("King", (term,))
-    print(result)
-    print(expected)
     assert result == expected
 
     y = Term("x", TermType.VARIABLE)
@@ -81,7 +79,6 @@ def test_unify_var():
         {Term("x", TermType.VARIABLE): Term("y", TermType.VARIABLE)}
     )
     result = unify_var(x, y, s)
-    print(type(expected), type(result))
     assert expected == result
 
 

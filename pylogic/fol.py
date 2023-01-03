@@ -172,12 +172,6 @@ class Substitution:
     def __eq__(self, other):
         if len(self) != len(other):
             return False
-        print(
-            [
-                self._substitution_values[x] == other._substitution_values[y]
-                for x, y in zip(self._substitution_values, other._substitution_values)
-            ]
-        )
 
         return all(
             x in self and x in other and self[x] == other[x]
