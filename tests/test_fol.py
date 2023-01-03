@@ -4,6 +4,7 @@ from pylogic.fol import (
     Substitution,
     Term,
     TermType,
+    standardize_variables,
     unify,
     unify_var,
 )
@@ -109,3 +110,24 @@ def test_unify():
     )
     result = unify([x, b, z], [a, y, x], Substitution({}))
     assert expected == result
+
+
+def test_standardize_variables():
+    x = Term("x", TermType.VARIABLE)
+    y = Term("x", TermType.VARIABLE)
+    a = Term("A", TermType.CONSTANT)
+    z = Term("x", TermType.VARIABLE)
+    p1 = Predicate("King", [x])
+    p2 = Predicate("TalksTo", [x, y, a])
+    p3 = Predicate("Good", [z])
+    hc = standardize_variables(HornClauseFOL([p1, p2], p3))
+    assert hc == HornClauseFOL(
+        [
+            Predicate("King", [Term("x0", TermType.VARIABLE)]),
+            Predicate(
+                "TalksTo",
+                [Term("x1", TermType.VARIABLE), Term("x2", TermType.VARIABLE), a],
+            ),
+        ],
+        Predicate("Good", [Term("x3", TermType.VARIABLE)]),
+    )

@@ -275,3 +275,44 @@ def unify_var(
     # Case with occur check, example x/f(x), meaning f(f(x))...
 
     return theta.add_substitutions({var: x})
+
+
+def standardize_variables(rule: HornClauseFOL):
+    new_antecedents = []
+    i = 0
+    for antecedent in rule.antecedents:
+        args = []
+        for arg in antecedent.args:
+            if arg.type == TermType.VARIABLE:
+                new_arg = Term(f"x{i}", arg.type)
+                i += 1
+            else:
+                new_arg = Term(arg.identifier, arg.type)
+
+            args.append(new_arg)
+        new_antecedents.append(
+            Predicate(antecedent.identifier, args, antecedent.is_negated)
+        )
+
+    new_consequent = rule.consequent
+    if isinstance(rule.consequent, Predicate):
+        args = []
+        for arg in rule.consequent.args:
+            if arg.type == TermType.VARIABLE:
+                new_arg = Term(f"x{i}", arg.type)
+                i += 1
+            else:
+                new_arg = Term(arg.identifier, arg.type)
+            args.append(new_arg)
+        new_consequent = Predicate(rule.consequent.identifier, args)
+
+    return HornClauseFOL(new_antecedents, new_consequent)
+
+
+def fol_fc_ask(kb: List[HornClauseFOL], alpha) -> Optional[Substitution]:
+    while True:
+        # new = set()
+        for _ in kb:
+            pass  # std_rule = standardize_variables(rule)
+        break
+    return None
