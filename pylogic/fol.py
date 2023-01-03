@@ -146,6 +146,35 @@ class Substitution:
         )
         return Predicate(pred.identifier, args)
 
+    def __contains__(self, key: Term) -> bool:
+        return key in self._substitution_values
+
+    def __getitem__(self, key: Term) -> Term:
+        return self._substitution_values[key]
+
+    def add_substitutions(
+        self, substitution_values: Dict[Term, Term]
+    ) -> "Substitution":
+        new_subs = {
+            Term(k.identifier, v.type): Term(v.identifier, v.type)
+            for k, v in self._substitution_values.items()
+        }
+
+        new_subs.update(substitution_values)
+        return Substitution(new_subs)
+
+    def __len__(self):
+        return len(self._substitution_values)
+
+    def __repr__(self):
+        return str(self._substitution_values)
+
+    def __eq__(self, other):
+        if len(self) != len(other):
+            return False
+
+        return all(self[x] == other[x] for x in self._substitution_values)
+
 
 class HornClauseFOL:
     class BadHornClauseFOL(Exception):
@@ -200,3 +229,47 @@ class HornClauseFOL:
             return False
 
         return self.consequent == other.consequent
+
+
+def unify(
+    x: Union[Term, List[Term]],
+    y: Union[Term, List[Term]],
+    theta: Optional[Substitution],
+) -> Optional[Substitution]:
+    if theta is None:
+        return None
+
+    if x == y:
+        return theta
+
+    if isinstance(x, list) and isinstance(y, list):
+        return unify(x[1:], y[1:], unify(x[0], y[0], theta))
+
+    if isinstance(x, list) or isinstance(y, list):
+        return None
+
+    if x.type == TermType.VARIABLE:
+        return unify_var(x, y, theta)
+    if y.type == TermType.VARIABLE:
+        return unify_var(y, x, theta)
+
+    # TODO: Case with compound expression, example using function symbols
+
+    return None
+
+
+def unify_var(
+    var: Term, x: Term, theta: Optional[Substitution]
+) -> Optional[Substitution]:
+    if theta is not None:
+        if var in theta:
+            return unify(theta[var], x, theta)
+        if x in theta:
+            return unify(var, theta[x], theta)
+    else:
+        theta = Substitution({})
+
+    # TODO: This is only if functional symbols appear in the expression
+    # Case with occur check, example x/f(x), meaning f(f(x))...
+
+    return theta.add_substitutions({var: x})

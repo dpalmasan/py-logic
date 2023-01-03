@@ -1,4 +1,12 @@
-from pylogic.fol import HornClauseFOL, Predicate, Substitution, Term, TermType
+from pylogic.fol import (
+    HornClauseFOL,
+    Predicate,
+    Substitution,
+    Term,
+    TermType,
+    unify,
+    unify_var,
+)
 import pytest
 
 
@@ -31,6 +39,18 @@ def test_substitution():
     print(expected)
     assert result == expected
 
+    y = Term("x", TermType.VARIABLE)
+    a = Term("John", TermType.CONSTANT)
+    assert y in sub
+    assert a not in sub
+    assert sub[x] == Term("Diego", TermType.CONSTANT)
+
+    y = Term("y", TermType.VARIABLE)
+    assert Term("y", TermType.VARIABLE) in sub.add_substitutions({y: a})
+    assert sub.add_substitutions({y: a})[Term("y", TermType.VARIABLE)] == Term(
+        "John", TermType.CONSTANT
+    )
+
 
 def test_horn_clause_fol():
     x = Term("x", TermType.VARIABLE)
@@ -51,3 +71,24 @@ def test_horn_clause_fol():
     hc = HornClauseFOL([p1, p2], ~b)
     assert hc.consequent is False
     assert hc == HornClauseFOL([p1, b, p2], None)
+
+
+def test_unify_var():
+    x = Term("x", TermType.VARIABLE)
+    y = Term("y", TermType.VARIABLE)
+    s = Substitution({})
+    expected = Substitution(
+        {Term("x", TermType.VARIABLE): Term("y", TermType.VARIABLE)}
+    )
+    result = unify_var(x, y, s)
+    print(type(expected), type(result))
+    assert expected == result
+
+
+def test_unify():
+    x = Term("x", TermType.VARIABLE)
+    y = Term("x", TermType.VARIABLE)
+    s1 = Substitution({Term("z", TermType.VARIABLE): Term("A", TermType.CONSTANT)})
+    s2 = Substitution({Term("z", TermType.VARIABLE): Term("A", TermType.CONSTANT)})
+    assert unify(x, y, s1) == s2
+    assert unify(x, y, None) is None
