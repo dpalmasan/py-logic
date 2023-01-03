@@ -73,7 +73,7 @@ class Predicate(Sentence):
     def __init__(
         self,
         identifier,
-        args: Tuple[Term],
+        args: List[Term],
         is_negated: bool = False,
     ):
         self._identifier = identifier
@@ -89,8 +89,8 @@ class Predicate(Sentence):
         return self._is_negated
 
     @property
-    def args(self) -> Tuple[Term]:
-        return self._args
+    def args(self) -> List[Term]:
+        return list(self._args)
 
     def __repr__(self) -> str:
         arg_string = ", ".join(map(str, self._args))
@@ -98,7 +98,7 @@ class Predicate(Sentence):
         return f"{neg}{self.identifier}({arg_string})"
 
     def __invert__(self) -> "Predicate":
-        return Predicate(self.identifier, self._args, not self.is_negated)
+        return Predicate(self.identifier, list(self.args), not self.is_negated)
 
     def __hash__(self) -> int:
         return hash(self.__repr__())
@@ -156,7 +156,7 @@ class Substitution:
         self, substitution_values: Dict[Term, Term]
     ) -> "Substitution":
         new_subs = {
-            Term(k.identifier, v.type): Term(v.identifier, v.type)
+            Term(k.identifier, k.type): Term(v.identifier, v.type)
             for k, v in self._substitution_values.items()
         }
 
@@ -172,8 +172,17 @@ class Substitution:
     def __eq__(self, other):
         if len(self) != len(other):
             return False
+        print(
+            [
+                self._substitution_values[x] == other._substitution_values[y]
+                for x, y in zip(self._substitution_values, other._substitution_values)
+            ]
+        )
 
-        return all(self[x] == other[x] for x in self._substitution_values)
+        return all(
+            x in self and x in other and self[x] == other[x]
+            for x in self._substitution_values
+        )
 
 
 class HornClauseFOL:
@@ -227,7 +236,6 @@ class HornClauseFOL:
         other_ant = sorted(other.antecedents, key=lambda x: str(x))
         if antecedents != other_ant:
             return False
-
         return self.consequent == other.consequent
 
 
@@ -240,6 +248,8 @@ def unify(
         return None
 
     if isinstance(x, list) and isinstance(y, list):
+        if x == y:
+            return theta
         return unify(x[1:], y[1:], unify(x[0], y[0], theta))
 
     if isinstance(x, list) or isinstance(y, list):

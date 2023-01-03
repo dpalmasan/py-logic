@@ -96,3 +96,19 @@ def test_unify():
     assert unify(x, a, Substitution({})) == Substitution({x: a})
     assert unify(a, y, Substitution({})) == Substitution({y: a})
     assert unify(x, [a], Substitution({})) is None
+
+    x = Term("x", TermType.VARIABLE)
+    y = Term("y", TermType.VARIABLE)
+    z = Term("z", TermType.VARIABLE)
+    a = Term("A", TermType.CONSTANT)
+    b = Term("B", TermType.CONSTANT)
+
+    expected = Substitution(
+        {
+            x: a,
+            y: b,
+            z: a,
+        }
+    )
+    result = unify([x, b, z], [a, y, x], Substitution({}))
+    assert expected == result
