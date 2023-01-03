@@ -123,11 +123,11 @@ def test_standardize_variables():
     hc = standardize_variables(HornClauseFOL([p1, p2], p3))
     assert hc == HornClauseFOL(
         [
-            Predicate("King", [Term("x0", TermType.VARIABLE)]),
+            Predicate("King", [Term("x", TermType.VARIABLE)]),
             Predicate(
                 "TalksTo",
-                [Term("x1", TermType.VARIABLE), Term("x2", TermType.VARIABLE), a],
+                [Term("x0", TermType.VARIABLE), Term("x1", TermType.VARIABLE), a],
             ),
         ],
-        Predicate("Good", [Term("x3", TermType.VARIABLE)]),
+        Predicate("Good", [Term("x", TermType.VARIABLE)]),
     )

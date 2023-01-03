@@ -26,11 +26,14 @@ class Term:
     def __repr__(self) -> str:
         return f"Term({self.identifier}, type={self.type})"
 
+    def __str__(self) -> str:
+        return f"{self.identifier}"
+
     def __eq__(self, other) -> bool:
         return self.identifier == other.identifier and self.type == other.type
 
     def __hash__(self) -> int:
-        return hash(str(self))
+        return hash(repr(self))
 
 
 class Sentence(ABC):
@@ -93,7 +96,7 @@ class Predicate(Sentence):
         return list(self._args)
 
     def __repr__(self) -> str:
-        arg_string = ", ".join(map(str, self._args))
+        arg_string = ", ".join(map(repr, self._args))
         neg = "¬" if self.is_negated else ""
         return f"{neg}{self.identifier}({arg_string})"
 
@@ -218,6 +221,10 @@ class HornClauseFOL:
 
     def __repr__(self):
         antecedents = sorted(self.antecedents, key=lambda x: str(x))
+        return f"{' ^ '.join([repr(v) for v in antecedents])} => {self.consequent}"
+
+    def __str__(self):
+        antecedents = sorted(self.antecedents, key=lambda x: str(x))
         return f"{' ^ '.join([str(v) for v in antecedents])} => {self.consequent}"
 
     def __hash__(self) -> int:
@@ -280,12 +287,17 @@ def unify_var(
 def standardize_variables(rule: HornClauseFOL):
     new_antecedents = []
     i = 0
+    seen = set()
     for antecedent in rule.antecedents:
         args = []
         for arg in antecedent.args:
             if arg.type == TermType.VARIABLE:
-                new_arg = Term(f"x{i}", arg.type)
-                i += 1
+                if arg.identifier in seen:
+                    new_arg = Term(f"x{i}", arg.type)
+                    i += 1
+                else:
+                    new_arg = Term(arg.identifier, arg.type)
+                    seen.add(arg.identifier)
             else:
                 new_arg = Term(arg.identifier, arg.type)
 
@@ -294,25 +306,75 @@ def standardize_variables(rule: HornClauseFOL):
             Predicate(antecedent.identifier, args, antecedent.is_negated)
         )
 
-    new_consequent = rule.consequent
     if isinstance(rule.consequent, Predicate):
-        args = []
-        for arg in rule.consequent.args:
-            if arg.type == TermType.VARIABLE:
-                new_arg = Term(f"x{i}", arg.type)
-                i += 1
-            else:
-                new_arg = Term(arg.identifier, arg.type)
-            args.append(new_arg)
-        new_consequent = Predicate(rule.consequent.identifier, args)
+        new_consequent = Predicate(rule.consequent.identifier, rule.consequent.args)
+        return HornClauseFOL(new_antecedents, new_consequent)
 
-    return HornClauseFOL(new_antecedents, new_consequent)
+    return HornClauseFOL(new_antecedents, rule.consequent)
 
 
 def fol_fc_ask(kb: List[HornClauseFOL], alpha) -> Optional[Substitution]:
     while True:
         # new = set()
-        for _ in kb:
-            pass  # std_rule = standardize_variables(rule)
+        for rule in kb:
+            std_rule = standardize_variables(rule)
+            print(std_rule)
+            for rule_ in kb:
+                if rule == rule_:
+                    continue
+                # theta = unify(rule.args, rule_.args, Substitution({}))
+                theta = Substitution({})
+                if theta is not None:
+                    q = theta.substitute(rule.consequent)
+                    print(q)
         break
     return None
+
+
+# No function symbols, so this KB is of class Datalog
+x = Term("x", TermType.VARIABLE)
+y = Term("y", TermType.VARIABLE)
+z = Term("z", TermType.VARIABLE)
+
+nono = Term("Nono", TermType.CONSTANT)
+west = Term("West", TermType.CONSTANT)
+m1 = Term("M1", TermType.CONSTANT)
+america = Term("America", TermType.CONSTANT)
+
+p1 = Predicate("American", [x])
+p2 = Predicate("Weapon", [y])
+p3 = Predicate("Sells", [x, y, z])
+p4 = Predicate("Hostile", [z])
+p5 = Predicate("Criminal", [x])
+p6 = Predicate("Owns", [nono, m1])
+p7 = Predicate("Missile", [m1])
+p8 = Predicate("Missile", [x])
+p9 = Predicate("Owns", [nono, x])
+p10 = Predicate("Sells", [west, x, nono])
+p11 = Predicate("Weapon", [x])
+p12 = Predicate("Enemy", [x, america])
+p13 = Predicate("American", [west])
+p14 = Predicate("Enemy", [nono, america])
+
+hc1 = HornClauseFOL([p1, p2, p3, p4], p5)
+hc2 = HornClauseFOL([p6], True)
+hc3 = HornClauseFOL([p7], True)
+hc4 = HornClauseFOL([p8, p9], p10)
+hc5 = HornClauseFOL([p8], p11)
+hc6 = HornClauseFOL([p12], Predicate("Hostile", [x]))
+hc7 = HornClauseFOL([p13], True)
+hc8 = HornClauseFOL([p14], True)
+
+kb = [
+    hc1,
+    hc2,
+    hc3,
+    hc4,
+    hc5,
+    hc6,
+    hc7,
+    hc8,
+]
+
+for rule in kb:
+    print(rule)
