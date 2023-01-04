@@ -140,6 +140,9 @@ class Substitution:
 
         return term
 
+    def is_empty(self) -> bool:
+        return len(self._substitution_values) == 0
+
     @no_type_check
     def substitute(self, pred: Predicate) -> Predicate:
 
@@ -191,17 +194,21 @@ class HornClauseFOL:
         antecedents: List[Predicate],
         consequent: Optional[Union[Predicate, bool]] = None,
     ):
+        antecedents = sorted(antecedents, key=lambda x: x.identifier)
         for antecedent in antecedents:
             if antecedent.is_negated:
                 raise HornClauseFOL.BadHornClauseFOL(
                     "Antecedents should not be negated"
                 )
 
+        # TODO: Raise exception if not atomic (has variables)
         if len(antecedents) == 1 and consequent is None:
             self._antecedents = antecedents
             self._consequent = True
             return
 
+        # TODO: Here it would be better to raise exception, as we are only interested
+        # in True atoms
         if isinstance(consequent, Predicate) and consequent.is_negated:
             self._consequent = False
             antecedents.append(~consequent)
@@ -233,10 +240,7 @@ class HornClauseFOL:
     def __eq__(self, other) -> bool:
         if not isinstance(other, HornClauseFOL):
             return False
-        antecedents = sorted(self.antecedents, key=lambda x: str(x))
-        other_ant = sorted(other.antecedents, key=lambda x: str(x))
-        if antecedents != other_ant:
-            return False
+
         return self.consequent == other.consequent
 
 
@@ -249,6 +253,8 @@ def unify(
         return None
 
     if isinstance(x, list) and isinstance(y, list):
+        if len(x) != len(y):
+            return None
         if x == y:
             return theta
         return unify(x[1:], y[1:], unify(x[0], y[0], theta))
@@ -284,6 +290,7 @@ def unify_var(
     return theta.add_substitutions({var: x})
 
 
+# TODO: Add test and fix implementation as it seems it is not doing what is expected
 def standardize_variables(rule: HornClauseFOL):
     new_antecedents = []
     i = 0
@@ -313,21 +320,59 @@ def standardize_variables(rule: HornClauseFOL):
     return HornClauseFOL(new_antecedents, rule.consequent)
 
 
+@no_type_check
 def fol_fc_ask(kb: List[HornClauseFOL], alpha) -> Optional[Substitution]:
+    known_facts = []
+    known_facts_identifier = []
+    actual_kb = []
+    for hc in kb:
+        if hc.consequent is True:
+            for antecedent in hc.antecedents:
+                known_facts.append(antecedent)
+                known_facts_identifier.append(antecedent.identifier)
+        actual_kb.append(hc)
+    print(known_facts)
     while True:
-        # new = set()
-        for rule in kb:
-            std_rule = standardize_variables(rule)
-            print(std_rule)
-            for rule_ in kb:
-                if rule == rule_:
-                    continue
-                # theta = unify(rule.args, rule_.args, Substitution({}))
-                theta = Substitution({})
-                if theta is not None:
-                    q = theta.substitute(rule.consequent)
-                    print(q)
-        break
+        new = []
+        for rule in actual_kb:
+            # std_rule = standardize_variables(rule)
+            theta = Substitution({})
+            for fact, identifier in zip(known_facts, known_facts_identifier):
+                for antecedent in rule.antecedents:
+                    if antecedent.identifier == identifier:
+                        theta = unify(fact.args, antecedent.args, theta)
+
+            if theta is not None and not theta.is_empty():
+                satisfied = True
+                for antecedent in rule.antecedents:
+                    p_ = theta.substitute(antecedent)
+                    for arg in p_.args:
+                        if arg.type == TermType.VARIABLE:
+                            satisfied = False
+                            break
+                    if not satisfied:
+                        break
+                if satisfied:
+                    q_ = theta.substitute(rule.consequent)
+                    # TODO: Check renaming of a sentence:
+                    new_hc = HornClauseFOL([q_], True)
+                    if new_hc not in known_facts:
+                        new.append(new_hc)
+                    if q_.identifier == alpha.identifier:
+                        phi = unify(q_.args, alpha.args, theta)
+                        if phi is not None:
+                            return phi
+        for n in new:
+            if n not in known_facts:
+                known_facts.append(n)
+                known_facts.append(n.antecedents[0].identifier)
+
+            # theta = Substitution({})
+            # if theta is not None:
+            #     q = theta.substitute(rule.consequent)
+            #     print(q)
+        if len(new) == 0:
+            break
     return None
 
 
@@ -376,5 +421,4 @@ kb = [
     hc8,
 ]
 
-for rule in kb:
-    print(rule)
+# fol_fc_ask(kb, Predicate("Criminal", [west]))
