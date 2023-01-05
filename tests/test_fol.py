@@ -7,6 +7,7 @@ from pylogic.fol import (
     standardize_variables,
     unify,
     unify_var,
+    fol_fc_ask,
 )
 import pytest
 
@@ -112,6 +113,7 @@ def test_unify():
     assert expected == result
 
 
+# TODO: Fix test once the implementation is correct
 def test_standardize_variables():
     x = Term("x", TermType.VARIABLE)
     y = Term("x", TermType.VARIABLE)
@@ -131,3 +133,60 @@ def test_standardize_variables():
         ],
         Predicate("Good", [Term("x", TermType.VARIABLE)]),
     )
+
+
+def test_fol_fc_ask():
+    # No function symbols, so this KB is of class Datalog
+    x = Term("x", TermType.VARIABLE)
+    y = Term("y", TermType.VARIABLE)
+    z = Term("z", TermType.VARIABLE)
+
+    nono = Term("Nono", TermType.CONSTANT)
+    west = Term("West", TermType.CONSTANT)
+    m1 = Term("M1", TermType.CONSTANT)
+    america = Term("America", TermType.CONSTANT)
+
+    p1 = Predicate("American", [x])
+    p2 = Predicate("Weapon", [y])
+    p3 = Predicate("Sells", [x, y, z])
+    p4 = Predicate("Hostile", [z])
+    p5 = Predicate("Criminal", [x])
+    p6 = Predicate("Owns", [nono, m1])
+    p7 = Predicate("Missile", [m1])
+    p8 = Predicate("Missile", [x])
+    p9 = Predicate("Owns", [nono, x])
+    p10 = Predicate("Sells", [west, x, nono])
+    p11 = Predicate("Weapon", [x])
+    p12 = Predicate("Enemy", [x, america])
+    p13 = Predicate("American", [west])
+    p14 = Predicate("Enemy", [nono, america])
+
+    hc1 = HornClauseFOL([p1, p2, p3, p4], p5)
+    hc2 = HornClauseFOL([p6], True)
+    hc3 = HornClauseFOL([p7], True)
+    hc4 = HornClauseFOL([p8, p9], p10)
+    hc5 = HornClauseFOL([p8], p11)
+    hc6 = HornClauseFOL([p12], Predicate("Hostile", [x]))
+    hc7 = HornClauseFOL([p13], True)
+    hc8 = HornClauseFOL([p14], True)
+
+    kb = [
+        hc1,
+        hc2,
+        hc3,
+        hc4,
+        hc5,
+        hc6,
+        hc7,
+        hc8,
+    ]
+
+    result = fol_fc_ask(kb, Predicate("Criminal", [west]))
+    expected = Substitution(
+        {
+            Term("x", type=TermType.VARIABLE): Term("West", type=TermType.CONSTANT),
+            Term("y", type=TermType.VARIABLE): Term("M1", type=TermType.CONSTANT),
+            Term("z", type=TermType.VARIABLE): Term("Nono", type=TermType.CONSTANT),
+        }
+    )
+    assert expected == result

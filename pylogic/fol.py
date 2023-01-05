@@ -100,6 +100,11 @@ class Predicate(Sentence):
         neg = "¬" if self.is_negated else ""
         return f"{neg}{self.identifier}({arg_string})"
 
+    def __str__(self) -> str:
+        arg_string = ", ".join(map(str, self._args))
+        neg = "¬" if self.is_negated else ""
+        return f"{neg}{self.identifier}({arg_string})"
+
     def __invert__(self) -> "Predicate":
         return Predicate(self.identifier, list(self.args), not self.is_negated)
 
@@ -228,7 +233,9 @@ class HornClauseFOL:
 
     def __repr__(self):
         antecedents = sorted(self.antecedents, key=lambda x: str(x))
-        return f"{' ^ '.join([repr(v) for v in antecedents])} => {self.consequent}"
+        return (
+            f"{' ^ '.join([repr(v) for v in antecedents])} => {repr(self.consequent)}"
+        )
 
     def __str__(self):
         antecedents = sorted(self.antecedents, key=lambda x: str(x))
@@ -330,8 +337,10 @@ def fol_fc_ask(kb: List[HornClauseFOL], alpha) -> Optional[Substitution]:
             for antecedent in hc.antecedents:
                 known_facts.append(antecedent)
                 known_facts_identifier.append(antecedent.identifier)
-        actual_kb.append(hc)
-    print(known_facts)
+        else:
+            actual_kb.append(hc)
+
+    no_new_knowledge = False
     while True:
         new = []
         for rule in actual_kb:
@@ -352,73 +361,22 @@ def fol_fc_ask(kb: List[HornClauseFOL], alpha) -> Optional[Substitution]:
                             break
                     if not satisfied:
                         break
+
                 if satisfied:
                     q_ = theta.substitute(rule.consequent)
                     # TODO: Check renaming of a sentence:
-                    new_hc = HornClauseFOL([q_], True)
-                    if new_hc not in known_facts:
-                        new.append(new_hc)
+                    if q_ not in known_facts:
+                        new.append(q_)
                     if q_.identifier == alpha.identifier:
                         phi = unify(q_.args, alpha.args, theta)
                         if phi is not None:
                             return phi
-        for n in new:
-            if n not in known_facts:
-                known_facts.append(n)
-                known_facts.append(n.antecedents[0].identifier)
 
-            # theta = Substitution({})
-            # if theta is not None:
-            #     q = theta.substitute(rule.consequent)
-            #     print(q)
-        if len(new) == 0:
+            for n in new:
+                if n not in known_facts:
+                    known_facts.append(n)
+                    known_facts_identifier.append(n.identifier)
+
+        if no_new_knowledge:
             break
     return None
-
-
-# No function symbols, so this KB is of class Datalog
-x = Term("x", TermType.VARIABLE)
-y = Term("y", TermType.VARIABLE)
-z = Term("z", TermType.VARIABLE)
-
-nono = Term("Nono", TermType.CONSTANT)
-west = Term("West", TermType.CONSTANT)
-m1 = Term("M1", TermType.CONSTANT)
-america = Term("America", TermType.CONSTANT)
-
-p1 = Predicate("American", [x])
-p2 = Predicate("Weapon", [y])
-p3 = Predicate("Sells", [x, y, z])
-p4 = Predicate("Hostile", [z])
-p5 = Predicate("Criminal", [x])
-p6 = Predicate("Owns", [nono, m1])
-p7 = Predicate("Missile", [m1])
-p8 = Predicate("Missile", [x])
-p9 = Predicate("Owns", [nono, x])
-p10 = Predicate("Sells", [west, x, nono])
-p11 = Predicate("Weapon", [x])
-p12 = Predicate("Enemy", [x, america])
-p13 = Predicate("American", [west])
-p14 = Predicate("Enemy", [nono, america])
-
-hc1 = HornClauseFOL([p1, p2, p3, p4], p5)
-hc2 = HornClauseFOL([p6], True)
-hc3 = HornClauseFOL([p7], True)
-hc4 = HornClauseFOL([p8, p9], p10)
-hc5 = HornClauseFOL([p8], p11)
-hc6 = HornClauseFOL([p12], Predicate("Hostile", [x]))
-hc7 = HornClauseFOL([p13], True)
-hc8 = HornClauseFOL([p14], True)
-
-kb = [
-    hc1,
-    hc2,
-    hc3,
-    hc4,
-    hc5,
-    hc6,
-    hc7,
-    hc8,
-]
-
-# fol_fc_ask(kb, Predicate("Criminal", [west]))
