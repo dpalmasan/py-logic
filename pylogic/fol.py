@@ -258,7 +258,6 @@ def unify(
 ) -> Optional[Substitution]:
     if theta is None:
         return None
-
     if isinstance(x, list) and isinstance(y, list):
         if len(x) != len(y):
             return None
@@ -268,6 +267,9 @@ def unify(
 
     if isinstance(x, list) or isinstance(y, list):
         return None
+
+    if x.type == TermType.CONSTANT and y.type == TermType.CONSTANT:
+        return theta
     if x == y:
         return theta
     if x.type == TermType.VARIABLE:
@@ -276,7 +278,6 @@ def unify(
         return unify_var(y, x, theta)
 
     # TODO: Case with compound expression, example using function symbols
-
     return None
 
 
@@ -349,8 +350,9 @@ def fol_fc_ask(kb: List[HornClauseFOL], alpha) -> Optional[Substitution]:
             for fact, identifier in zip(known_facts, known_facts_identifier):
                 for antecedent in rule.antecedents:
                     if antecedent.identifier == identifier:
+                        fact = theta.substitute(fact)
+                        antecedent = theta.substitute(antecedent)
                         theta = unify(fact.args, antecedent.args, theta)
-
             if theta is not None and not theta.is_empty():
                 satisfied = True
                 for antecedent in rule.antecedents:
@@ -376,7 +378,6 @@ def fol_fc_ask(kb: List[HornClauseFOL], alpha) -> Optional[Substitution]:
                 if n not in known_facts:
                     known_facts.append(n)
                     known_facts_identifier.append(n.identifier)
-
         if no_new_knowledge:
             break
     return None
