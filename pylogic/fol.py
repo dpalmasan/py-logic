@@ -268,8 +268,6 @@ def unify(
     if isinstance(x, list) or isinstance(y, list):
         return None
 
-    if x.type == TermType.CONSTANT and y.type == TermType.CONSTANT:
-        return theta
     if x == y:
         return theta
     if x.type == TermType.VARIABLE:
@@ -298,34 +296,37 @@ def unify_var(
     return theta.add_substitutions({var: x})
 
 
-# TODO: Add test and fix implementation as it seems it is not doing what is expected
-def standardize_variables(rule: HornClauseFOL):
-    new_antecedents = []
-    i = 0
-    seen = set()
-    for antecedent in rule.antecedents:
-        args = []
-        for arg in antecedent.args:
+def standardize_predicate(pred: Optional[Union[Predicate, bool]], counter, seen):
+    args = []
+    if isinstance(pred, Predicate):
+        for arg in pred.args:
             if arg.type == TermType.VARIABLE:
                 if arg.identifier in seen:
-                    new_arg = Term(f"x{i}", arg.type)
-                    i += 1
+                    val = seen[arg.identifier]
+                    new_arg = Term(f"{arg.identifier}{val}", arg.type)
                 else:
-                    new_arg = Term(arg.identifier, arg.type)
-                    seen.add(arg.identifier)
+                    new_arg = Term(f"{arg.identifier}{counter}", arg.type)
+                    seen[arg.identifier] = counter
+                    counter += 1
             else:
                 new_arg = Term(arg.identifier, arg.type)
-
             args.append(new_arg)
-        new_antecedents.append(
-            Predicate(antecedent.identifier, args, antecedent.is_negated)
-        )
+    else:
+        return pred, counter, seen
 
-    if isinstance(rule.consequent, Predicate):
-        new_consequent = Predicate(rule.consequent.identifier, rule.consequent.args)
-        return HornClauseFOL(new_antecedents, new_consequent)
+    return Predicate(pred.identifier, args), counter, seen
 
-    return HornClauseFOL(new_antecedents, rule.consequent)
+
+# TODO: Add test and fix implementation as it seems it is not doing what is expected
+def standardize_variables(rule: HornClauseFOL, counter):
+    new_antecedents = []
+    seen: Dict[str, int] = {}
+    for antecedent in rule.antecedents:
+        new_pred, counter, seen = standardize_predicate(antecedent, counter, seen)
+        new_antecedents.append(new_pred)
+
+    new_consequent, counter, _ = standardize_predicate(rule.consequent, counter, seen)
+    return HornClauseFOL(new_antecedents, new_consequent), counter
 
 
 @no_type_check
@@ -344,15 +345,15 @@ def fol_fc_ask(kb: List[HornClauseFOL], alpha) -> Optional[Substitution]:
     no_new_knowledge = False
     while True:
         new = []
+        counter = 0
         for rule in actual_kb:
-            # std_rule = standardize_variables(rule)
+            rule, counter = standardize_variables(rule, counter)
             theta = Substitution({})
-            for fact, identifier in zip(known_facts, known_facts_identifier):
-                for antecedent in rule.antecedents:
+            for antecedent in rule.antecedents:
+                for fact, identifier in zip(known_facts, known_facts_identifier):
                     if antecedent.identifier == identifier:
-                        fact = theta.substitute(fact)
-                        antecedent = theta.substitute(antecedent)
                         theta = unify(fact.args, antecedent.args, theta)
+
             if theta is not None and not theta.is_empty():
                 satisfied = True
                 for antecedent in rule.antecedents:

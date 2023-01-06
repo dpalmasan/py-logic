@@ -4,6 +4,7 @@ from pylogic.fol import (
     Substitution,
     Term,
     TermType,
+    standardize_predicate,
     standardize_variables,
     unify,
     unify_var,
@@ -114,24 +115,65 @@ def test_unify():
 
 
 # TODO: Fix test once the implementation is correct
+def test_standardize_predicate():
+    x = Term("x", TermType.VARIABLE)
+    j = Term("John", TermType.CONSTANT)
+    e = Term("Elizabeth", TermType.CONSTANT)
+    p1 = Predicate("Knows", [j, x])
+    p2 = Predicate("Knows", [x, e])
+    theta = Substitution({})
+    assert unify(p1.args, p2.args, theta) is None
+
+    p1_new, counter, seen = standardize_predicate(p1, 0, {})
+    p2_new, counter, seen = standardize_predicate(p2, counter, {})
+
+    # Counter should be in one as we replaced two variables
+    assert counter == 2
+
+    assert seen == {"x": 1}
+
+    # Unification should not fail
+    assert unify(p1_new.args, p2_new.args, theta) == Substitution(
+        {Term("x1", type=TermType.VARIABLE): j, Term("x0", type=TermType.VARIABLE): e}
+    )
+
+
 def test_standardize_variables():
     x = Term("x", TermType.VARIABLE)
-    y = Term("x", TermType.VARIABLE)
+    y = Term("y", TermType.VARIABLE)
     a = Term("A", TermType.CONSTANT)
-    z = Term("x", TermType.VARIABLE)
-    p1 = Predicate("King", [x])
-    p2 = Predicate("TalksTo", [x, y, a])
-    p3 = Predicate("Good", [z])
-    hc = standardize_variables(HornClauseFOL([p1, p2], p3))
-    assert hc == HornClauseFOL(
+    p1 = Predicate("Knows", [x, y])
+    p2 = Predicate("Friends", [x, y])
+    hc = HornClauseFOL([p1], p2)
+    new_hc, counter = standardize_variables(hc, 0)
+    assert counter == 2
+    assert new_hc == HornClauseFOL(
         [
-            Predicate("King", [Term("x", TermType.VARIABLE)]),
             Predicate(
-                "TalksTo",
-                [Term("x0", TermType.VARIABLE), Term("x1", TermType.VARIABLE), a],
-            ),
+                "Knows", [Term("x0", TermType.VARIABLE), Term("y1", TermType.VARIABLE)]
+            )
         ],
-        Predicate("Good", [Term("x", TermType.VARIABLE)]),
+        Predicate(
+            "Friends", [Term("x0", TermType.VARIABLE), Term("y1", TermType.VARIABLE)]
+        ),
+    )
+
+    p1 = Predicate("Knows", [x, a])
+    p2 = Predicate("Friends", [x, a])
+    hc = HornClauseFOL([p1], p2)
+    new_hc, counter = standardize_variables(hc, 0)
+    assert counter == 1
+    assert new_hc == HornClauseFOL(
+        [Predicate("Knows", [Term("x0", TermType.VARIABLE), a])],
+        Predicate("Friends", [Term("x0", TermType.VARIABLE), a]),
+    )
+
+    p2 = Predicate("Friends", [x, a])
+    hc = HornClauseFOL([p1], False)
+    new_hc, counter = standardize_variables(hc, 0)
+    assert counter == 1
+    assert new_hc == HornClauseFOL(
+        [Predicate("Knows", [Term("x0", TermType.VARIABLE), a])], False
     )
 
 
@@ -184,9 +226,9 @@ def test_fol_fc_ask():
     result = fol_fc_ask(kb, Predicate("Criminal", [west]))
     expected = Substitution(
         {
-            Term("x", type=TermType.VARIABLE): Term("West", type=TermType.CONSTANT),
-            Term("y", type=TermType.VARIABLE): Term("M1", type=TermType.CONSTANT),
-            Term("z", type=TermType.VARIABLE): Term("Nono", type=TermType.CONSTANT),
+            Term("x0", type=TermType.VARIABLE): Term("West", type=TermType.CONSTANT),
+            Term("y2", type=TermType.VARIABLE): Term("M1", type=TermType.CONSTANT),
+            Term("z1", type=TermType.VARIABLE): Term("Nono", type=TermType.CONSTANT),
         }
     )
     assert expected == result
