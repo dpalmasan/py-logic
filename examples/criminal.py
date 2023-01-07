@@ -5,6 +5,7 @@ from pylogic.fol import (
     TermType,
     fol_bc_ask,
     Substitution,
+    fol_fc_ask,
 )
 
 
@@ -56,6 +57,13 @@ goal = Predicate("Criminal", [west])
 for rule in kb:
     print(rule)
 
+print("Forward Chaining:")
+
+sub = fol_fc_ask(kb, Predicate("Criminal", [west]))
+for k, v in sub.substitution_values.items():
+    print(k, v)
+
+print("Backward Chaining:")
 answers = fol_bc_ask(kb, [goal], Substitution({}))
 for answer in answers:
     for k, v in answer.substitution_values.items():

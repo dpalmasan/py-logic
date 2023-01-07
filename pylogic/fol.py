@@ -345,10 +345,9 @@ def fol_fc_ask(kb: List[HornClauseFOL], alpha) -> Optional[Substitution]:
     known_facts_identifier = []
     actual_kb = []
     for hc in kb:
-        if hc.consequent is True:
-            for antecedent in hc.antecedents:
-                known_facts.append(antecedent)
-                known_facts_identifier.append(antecedent.identifier)
+        if is_fact(hc):
+            known_facts.append(hc.consequent)
+            known_facts_identifier.append(hc.consequent.identifier)
         else:
             actual_kb.append(hc)
 

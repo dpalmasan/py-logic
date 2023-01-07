@@ -205,13 +205,13 @@ def test_fol_fc_ask():
     p14 = Predicate("Enemy", [nono, america])
 
     hc1 = HornClauseFOL([p1, p2, p3, p4], p5)
-    hc2 = HornClauseFOL([p6], True)
-    hc3 = HornClauseFOL([p7], True)
+    hc2 = HornClauseFOL([], p6)
+    hc3 = HornClauseFOL([], p7)
     hc4 = HornClauseFOL([p8, p9], p10)
     hc5 = HornClauseFOL([p8], p11)
     hc6 = HornClauseFOL([p12], Predicate("Hostile", [x]))
-    hc7 = HornClauseFOL([p13], True)
-    hc8 = HornClauseFOL([p14], True)
+    hc7 = HornClauseFOL([], p13)
+    hc8 = HornClauseFOL([], p14)
 
     kb = [
         hc1,
