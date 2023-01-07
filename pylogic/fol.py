@@ -157,6 +157,13 @@ class Substitution:
         )
         return Predicate(pred.identifier, args)
 
+    @property
+    def substitution_values(self) -> Dict[Term, Term]:
+        return {
+            Term(k.identifier, k.type): Term(v.identifier, v.type)
+            for k, v in self._substitution_values.items()
+        }
+
     def __contains__(self, key: Term) -> bool:
         return key in self._substitution_values
 
@@ -233,13 +240,15 @@ class HornClauseFOL:
 
     def __repr__(self):
         antecedents = sorted(self.antecedents, key=lambda x: str(x))
-        return (
-            f"{' ^ '.join([repr(v) for v in antecedents])} => {repr(self.consequent)}"
-        )
+        if antecedents:
+            return f"{' ^ '.join([repr(v) for v in antecedents])} => {repr(self.consequent)}"
+        return f"{repr(self.consequent)}"
 
     def __str__(self):
         antecedents = sorted(self.antecedents, key=lambda x: str(x))
-        return f"{' ^ '.join([str(v) for v in antecedents])} => {self.consequent}"
+        if antecedents:
+            return f"{' ^ '.join([str(v) for v in antecedents])} => {self.consequent}"
+        return f"{self.consequent}"
 
     def __hash__(self) -> int:
         return hash(str(self))
@@ -258,6 +267,7 @@ def unify(
 ) -> Optional[Substitution]:
     if theta is None:
         return None
+
     if isinstance(x, list) and isinstance(y, list):
         if len(x) != len(y):
             return None
@@ -382,3 +392,31 @@ def fol_fc_ask(kb: List[HornClauseFOL], alpha) -> Optional[Substitution]:
         if no_new_knowledge:
             break
     return None
+
+
+def compose(theta1, theta2) -> Substitution:
+    new_values = theta1.substitution_values
+    new_values.update(theta2.substitution_values)
+    return Substitution(new_values)
+
+
+def is_fact(hc: HornClauseFOL) -> bool:
+    return len(hc.antecedents) == 0
+
+
+def fol_bc_ask(kb, goals, theta: Substitution) -> List[Substitution]:
+    if len(goals) == 0:
+        return [theta]
+    q_ = theta.substitute(goals[0])
+    counter = 0
+    answers: List[Substitution] = []
+    for r in kb:
+        r, counter = standardize_variables(r, counter)
+        q = r.consequent
+        if q_.identifier == q.identifier:
+            theta_ = unify(q.args, q_.args, Substitution({}))
+            if theta_ is not None:
+                rest_goals = r.antecedents + goals[1:]
+
+                answers = fol_bc_ask(kb, rest_goals, compose(theta_, theta)) + answers
+    return answers

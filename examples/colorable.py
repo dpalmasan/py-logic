@@ -3,7 +3,8 @@ from pylogic.fol import (
     Predicate,
     Term,
     TermType,
-    fol_fc_ask,
+    fol_bc_ask,
+    Substitution,
 )
 
 wa = Term("wa", TermType.VARIABLE)
@@ -34,43 +35,33 @@ blue = Term("Blue", TermType.CONSTANT)
 green = Term("Green", TermType.CONSTANT)
 
 p1 = HornClauseFOL(
-    [
-        Predicate("Diff", [red, blue]),
-    ],
-    True,
+    [],
+    Predicate("Diff", [red, blue]),
 )
 p2 = HornClauseFOL(
-    [
-        Predicate("Diff", [red, green]),
-    ],
-    True,
+    [],
+    Predicate("Diff", [red, green]),
 )
 p3 = HornClauseFOL(
-    [
-        Predicate("Diff", [green, red]),
-    ],
-    True,
+    [],
+    Predicate("Diff", [green, red]),
 )
 p4 = HornClauseFOL(
-    [
-        Predicate("Diff", [green, blue]),
-    ],
-    True,
+    [],
+    Predicate("Diff", [green, blue]),
 )
 p5 = HornClauseFOL(
-    [
-        Predicate("Diff", [blue, red]),
-    ],
-    True,
+    [],
+    Predicate("Diff", [blue, red]),
 )
-p6 = HornClauseFOL(
-    [
-        Predicate("Diff", [blue, green]),
-    ],
-)
+p6 = HornClauseFOL([], Predicate("Diff", [blue, green]))
 
 kb = [map, p1, p2, p3, p4, p5, p6]
 
-phi = fol_fc_ask(kb, Predicate("Colorable", []))
-for variable, value in phi._substitution_values.items():
-    print(variable, value)
+goal = Predicate("Colorable", [])
+answers = fol_bc_ask(kb, [goal], Substitution({}))
+
+for answer in answers:
+    for k, v in answer.substitution_values.items():
+        print(k, v)
+    print("=" * 7)

@@ -9,6 +9,7 @@ from pylogic.fol import (
     unify,
     unify_var,
     fol_fc_ask,
+    compose,
 )
 import pytest
 
@@ -232,3 +233,26 @@ def test_fol_fc_ask():
         }
     )
     assert expected == result
+
+
+def test_compose():
+    s1 = Substitution(
+        {
+            Term("x0", type=TermType.VARIABLE): Term("West", type=TermType.CONSTANT),
+            Term("y2", type=TermType.VARIABLE): Term("M1", type=TermType.CONSTANT),
+            Term("z1", type=TermType.VARIABLE): Term("Nono", type=TermType.CONSTANT),
+        }
+    )
+    s2 = Substitution(
+        {
+            Term("w3", type=TermType.VARIABLE): Term("M2", type=TermType.CONSTANT),
+        }
+    )
+    assert compose(s1, s2) == Substitution(
+        {
+            Term("x0", type=TermType.VARIABLE): Term("West", type=TermType.CONSTANT),
+            Term("y2", type=TermType.VARIABLE): Term("M1", type=TermType.CONSTANT),
+            Term("z1", type=TermType.VARIABLE): Term("Nono", type=TermType.CONSTANT),
+            Term("w3", type=TermType.VARIABLE): Term("M2", type=TermType.CONSTANT),
+        }
+    )
