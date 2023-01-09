@@ -651,7 +651,7 @@ def pl_resolution(kb: ResolutionKB, alpha: Clause, maxit=1000) -> bool:
 
 
 def find_pure_symbol(
-    symbols: Set[str], clauses: Set[CnfClause], model: Dict[str, bool]
+    symbols: Set[str], clauses: Set[CnfClause], model: Dict[str, Optional[bool]]
 ) -> Tuple[Optional[str], Optional[bool]]:
     variables = set()
     for symbol in symbols:
@@ -669,7 +669,7 @@ def find_pure_symbol(
 
 
 def find_unit_clause(
-    clauses: Set[CnfClause], model, previously_seen: Set[str]
+    clauses: Set[CnfClause], model: Dict[str, Optional[bool]], previously_seen: Set[str]
 ) -> Tuple[Optional[str], Optional[bool]]:
     """Model should already assign all values
 
@@ -702,7 +702,10 @@ def find_unit_clause(
 
 
 def dpll(
-    clauses: Set[CnfClause], symbols: Set[str], model, previously_seen: Set[str]
+    clauses: Set[CnfClause],
+    symbols: Set[str],
+    model: Dict[str, Optional[bool]],
+    previously_seen: Set[str],
 ) -> bool:
     all_clauses_true = reduce(
         lambda x, y: (x is True and y is True),
@@ -757,4 +760,5 @@ def dpll_satisfiable(s: Clause) -> bool:
     clauses = to_cnf(s)
     cnf_clauses = parser.parse(clauses)
     symbols = find_clause_symbols(cnf_clauses)
-    return dpll(cnf_clauses, symbols, defaultdict(lambda: None), set())
+    initial_model: Dict[str, Optional[bool]] = defaultdict(lambda: None)
+    return dpll(cnf_clauses, symbols, initial_model, set())
