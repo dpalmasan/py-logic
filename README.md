@@ -81,7 +81,12 @@ Examples are located under `/examples` folder. Lets go with the example in the A
 
 1. It is a crime for an american to sell weapons to hostile nations
 
-$$American(x) \land Weapon(y) \land Sells(x, y, z) \land Hostile(z) \Rightarrow Criminal(x)$$
+
+```math
+\begin{array} {   rr} \quad American(x) \land Weapon(y) \land \\ Sells(x, y, z) \land Hostile(z) \Rightarrow Criminal(x) \end{array}
+
+$$ $$
+```
 
 2. Nono has some missiles:
 
