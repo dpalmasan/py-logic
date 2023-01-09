@@ -11,6 +11,8 @@ class NonCnfClauseException(Exception):
 
 
 class UselessCnfClauseException(Exception):
+    """Used for clauses such as a v ~a which are always true."""
+
     pass
 
 
@@ -150,6 +152,10 @@ class BicondClause(Clause):
 
 
 def _is_simple_clause(phi: Clause) -> bool:
+    """Checks if a clause that is not a variable is compounded of Atoms.
+
+    For example if A and B are atoms, then A v B or A ^ B are simple clauses.
+    """
     return (
         type(phi.lhs) == Variable
         and type(phi.rhs) == Variable
@@ -161,7 +167,14 @@ def _is_variable(phi: Clause):
     return phi.OP == Operator.VARIABLE
 
 
-def _distribute_clauses(p, q):  # noqa: C901
+def _distribute_clauses(p: Clause, q: Clause):  # noqa: C901
+    """Apply distributive law to a clause.
+
+    Suppose we have ``p = A`` (where ``A`` is an atom) and q which is a
+    binary clause composed of two atoms (e.g ``B v C``), if we have:
+
+    * ``A ^ (B v C)`` should result into ``(A ^ B) v (A ^ C)``
+    """
     # Base Cases
     if _is_variable(p) and _is_simple_clause(q):
         if q.OP == Operator.AND:
@@ -225,6 +238,11 @@ def _distribute_clauses(p, q):  # noqa: C901
 
 
 def to_cnf(phi: Clause) -> Clause:
+    """Converts a formula into Conjunctive Normal Form.
+
+    For example if we have the clause ``A => B v C``, the conversion into CNF
+    would result in ``¬A v B v C``.
+    """
     if phi.OP == Operator.AND:
         p = to_cnf(phi.lhs)
         q = to_cnf(phi.rhs)
@@ -473,6 +491,7 @@ class BadHornClause(Exception):
     pass
 
 
+# TODO: Remove the Union on consequents, should only be a variable
 class HornClause:
     def __init__(
         self, antecedents: List[Variable], consequent: Union[Variable, bool] = None
@@ -526,6 +545,20 @@ class HornClause:
 
 
 def pl_fc_entails(kb: Set[HornClause], q: Variable) -> bool:
+    """Applies forward chaining to verify satisfiability.
+
+    Based on antecedents, tries to find a path to the consequent (query ``q``).
+    As seen in the inputs, this only works for Horn Clauses. For example:
+
+    If we query for ``Q`` and have the following KB:
+
+    * ``M => P``
+    * ``P => Q``
+    * ``M``
+
+    We can infer ``P`` because we have ``M``, and then using ``P`` we can infer ``Q``.
+    """
+
     # TODO: Deal with cases with contradictions on known variable values
     agenda: Set[Union[Variable, bool]] = set()
     count = defaultdict(lambda: 0)
@@ -640,11 +673,11 @@ def find_unit_clause(
 ) -> Tuple[Optional[str], Optional[bool]]:
     """Model should already assign all values
 
-    :param clauses: _description_
+    :param clauses: Set of clauses to search the unit clause
     :type clauses: Set[CnfClause]
-    :param model: _description_
-    :type model: _type_
-    :return: _description_
+    :param model: Variable assignment for which the search will be performed
+    :type model: Dict[str, bool]
+    :return: The unit clause symbol (e.g. ``A``) and the truthyness value in the model.
     :rtype: Tuple[str, bool]
     """
     for clause in clauses:
