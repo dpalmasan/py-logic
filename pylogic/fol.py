@@ -265,6 +265,12 @@ def unify(
     y: Union[Term, List[Term]],
     theta: Optional[Substitution],
 ) -> Optional[Substitution]:
+    """Applies unification of terms.
+
+    It is responsibility of the caller making sure that both
+    arguments are applied to the same predicate. We could change the API
+    in the future to pass the predicates instead of using the args.
+    """
     if theta is None:
         return None
 
@@ -292,6 +298,25 @@ def unify(
 def unify_var(
     var: Term, x: Term, theta: Optional[Substitution]
 ) -> Optional[Substitution]:
+    """Unifies a variable.
+
+    For example:
+
+    ```
+    Knows(John, x) | Knows(y, Carlos)
+    ```
+
+    Making the substitutions:
+
+    ```
+    {
+        x: Carlos,
+        y: John
+    }
+    ```
+
+    We could unify both predicates.
+    """
     if theta is not None:
         if var in theta:
             return unify(theta[var], x, theta)
@@ -329,6 +354,30 @@ def standardize_predicate(pred: Optional[Union[Predicate, bool]], counter, seen)
 
 # TODO: Add test and fix implementation as it seems it is not doing what is expected
 def standardize_variables(rule: HornClauseFOL, counter):
+    """Standardizes all the variables in a Predicate belonging to an Horn Clause.
+
+    For example, if we have the Horn clause:
+
+    ```
+    Knows(x, y) ^ Emperor(y) => King(x)
+    ```
+
+    Then the standardized version of the clause would be:
+
+    ```
+    Knows(x0, y1) ^ Emperor(y1) => King(x0)
+    ```
+
+    This is to avoid cases in which the variable name will be a problem in
+    unification:
+
+    ```
+    Knows(John, x) | Knows(x, Elizabeth)
+    ```
+
+    In this case, no unification is possible, since the variable name is the same for
+    both predicates, even though they come from different clauses.
+    """
     new_antecedents = []
     seen: Dict[str, int] = {}
     for antecedent in rule.antecedents:
