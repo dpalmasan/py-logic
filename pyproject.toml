@@ -1,3 +1,23 @@
+[project]
+name = "python-logic"
+version = "0.0.1"
+authors = [
+  { name="Diego Palma", email="dpalmasan@gmail.com" },
+]
+description = "A package to run logic inferences on python"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/dpalmasan/py-logic"
+Issues = "https://github.com/dpalmasan/py-logic/issues"
+
+
 [tool.black]
 line-length = 88
 target-version = ['py38', 'py39']
