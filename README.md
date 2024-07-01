@@ -12,6 +12,12 @@
 
 `Pylogic` is a library to integrate logic programming to your python programs. Currently it supports propositional logic, and a subset of first order logic (Horn Clauses). The API is supposed to be expressive as `python` is as a language.
 
+## Install
+
+```
+pip install python-logic
+```
+
 ### Examples
 
 ```python
